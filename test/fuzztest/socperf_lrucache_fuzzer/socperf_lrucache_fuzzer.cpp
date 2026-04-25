@@ -33,7 +33,8 @@
 // SocPerf LRU Cache header
 #include "socperf_lru_cache.h"
 
-namespace FuzzUtils {
+namespace FuzzUtils
+{
 
 // ============================================================================
 // Constants (G.CNS.02: Use named constants instead of magic numbers)
@@ -138,16 +139,19 @@ constexpr uint8_t TEST_CASE_COUNT = 16;
 // DataExtractor Class
 // ============================================================================
 
-class DataExtractor {
+class DataExtractor
+{
    public:
     explicit DataExtractor(const uint8_t* data, size_t size)
         : data_(data), size_(size), offset_(0) {}
 
     ~DataExtractor() = default;
 
-    int32_t ExtractInt32() {
+    int32_t ExtractInt32()
+    {
         const uint8_t* ptr = SafeRead(sizeof(int32_t));
-        if (ptr == nullptr) {
+        if (ptr == nullptr)
+        {
             return 0;
         }
         int32_t value = 0;
@@ -155,9 +159,11 @@ class DataExtractor {
         return value;
     }
 
-    uint32_t ExtractUInt32() {
+    uint32_t ExtractUInt32()
+    {
         const uint8_t* ptr = SafeRead(sizeof(uint32_t));
-        if (ptr == nullptr) {
+        if (ptr == nullptr)
+        {
             return 0;
         }
         uint32_t value = 0;
@@ -165,9 +171,11 @@ class DataExtractor {
         return value;
     }
 
-    size_t ExtractSizeT() {
+    size_t ExtractSizeT()
+    {
         const uint8_t* ptr = SafeRead(sizeof(size_t));
-        if (ptr == nullptr) {
+        if (ptr == nullptr)
+        {
             return 0;
         }
         size_t value = 0;
@@ -175,42 +183,52 @@ class DataExtractor {
         return value;
     }
 
-    uint8_t ExtractUInt8() {
+    uint8_t ExtractUInt8()
+    {
         const uint8_t* ptr = SafeRead(sizeof(uint8_t));
-        if (ptr == nullptr) {
+        if (ptr == nullptr)
+        {
             return 0;
         }
         return *ptr;
     }
 
-    bool ExtractBool() {
+    bool ExtractBool()
+    {
         const uint8_t* ptr = SafeRead(sizeof(uint8_t));
-        if (ptr == nullptr) {
+        if (ptr == nullptr)
+        {
             return false;
         }
         return *ptr != 0;
     }
 
-    std::string ExtractString(size_t maxLen = MAX_STRING_LENGTH) {
-        if (offset_ >= size_) {
+    std::string ExtractString(size_t maxLen = MAX_STRING_LENGTH)
+    {
+        if (offset_ >= size_)
+        {
             return "";
         }
         size_t len = data_[offset_] % (maxLen + 1);
         const uint8_t* ptr = SafeRead(len + 1);
-        if (ptr == nullptr) {
+        if (ptr == nullptr)
+        {
             return "";
         }
-        if (len > 0) {
+        if (len > 0)
+        {
             return std::string(reinterpret_cast<const char*>(ptr + 1), len);
         }
         return "";
     }
 
-    bool HasMore() const {
+    bool HasMore() const
+    {
         return offset_ < size_;
     }
 
-    size_t Remaining() const {
+    size_t Remaining() const
+    {
         return size_ - offset_;
     }
 
@@ -218,12 +236,15 @@ class DataExtractor {
     DataExtractor& operator=(const DataExtractor&) = delete;
 
    private:
-    bool CanExtract(size_t size) const {
+    bool CanExtract(size_t size) const
+    {
         return offset_ + size <= size_;
     }
 
-    const uint8_t* SafeRead(size_t size) {
-        if (!CanExtract(size)) {
+    const uint8_t* SafeRead(size_t size)
+    {
+        if (!CanExtract(size))
+        {
             return nullptr;
         }
         const uint8_t* ptr = data_ + offset_;
@@ -245,14 +266,17 @@ using namespace FuzzUtils;
 // ============================================================================
 
 template <typename K, typename V>
-void TestBasicPutGet(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor) {
-    for (int32_t i = 0; i < SMALL_ITERATION_COUNT && extractor.HasMore(); ++i) {
+void TestBasicPutGet(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
+{
+    for (int32_t i = 0; i < SMALL_ITERATION_COUNT && extractor.HasMore(); ++i)
+    {
         K key = static_cast<K>(extractor.ExtractInt32());
         V value = static_cast<V>(extractor.ExtractInt32());
         cache.put(key, value);
     }
 
-    for (int32_t i = 0; i < SMALL_ITERATION_COUNT && extractor.HasMore(); ++i) {
+    for (int32_t i = 0; i < SMALL_ITERATION_COUNT && extractor.HasMore(); ++i)
+    {
         K key = static_cast<K>(extractor.ExtractInt32());
         V retrievedValue;
         (void)cache.get(key, retrievedValue);
@@ -260,10 +284,12 @@ void TestBasicPutGet(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor&
 }
 
 template <typename K, typename V>
-void TestEviction(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, size_t capacity, DataExtractor& extractor) {
+void TestEviction(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, size_t capacity, DataExtractor& extractor)
+{
     (void)extractor;
     // Fill cache beyond capacity to trigger eviction
-    for (size_t i = 0; i < capacity * CAPACITY_MULTIPLIER; ++i) {
+    for (size_t i = 0; i < capacity * CAPACITY_MULTIPLIER; ++i)
+    {
         K key = static_cast<K>(i);
         V value = static_cast<V>(i * VALUE_MULTIPLIER_100);
         cache.put(key, value);
@@ -282,24 +308,28 @@ void TestEviction(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, size_t capacity, 
 }
 
 template <typename K, typename V>
-void TestUpdate(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor) {
+void TestUpdate(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
+{
     (void)extractor;
     // Insert initial values
-    for (int32_t i = 0; i < UPDATE_ITERATION_COUNT; ++i) {
+    for (int32_t i = 0; i < UPDATE_ITERATION_COUNT; ++i)
+    {
         K key = static_cast<K>(i);
         V value = static_cast<V>(i * VALUE_MULTIPLIER_100);
         cache.put(key, value);
     }
 
     // Update same keys with new values
-    for (int32_t i = 0; i < UPDATE_ITERATION_COUNT; ++i) {
+    for (int32_t i = 0; i < UPDATE_ITERATION_COUNT; ++i)
+    {
         K key = static_cast<K>(i);
         V newValue = static_cast<V>(i * VALUE_MULTIPLIER_100 * CAPACITY_MULTIPLIER);
         cache.put(key, newValue);
     }
 
     // Verify updates
-    for (int32_t i = 0; i < UPDATE_ITERATION_COUNT; ++i) {
+    for (int32_t i = 0; i < UPDATE_ITERATION_COUNT; ++i)
+    {
         K key = static_cast<K>(i);
         V retrievedValue;
         (void)cache.get(key, retrievedValue);
@@ -307,17 +337,20 @@ void TestUpdate(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extr
 }
 
 template <typename K, typename V>
-void TestMiss(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor) {
+void TestMiss(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
+{
     (void)extractor;
     // Fill cache
-    for (int32_t i = 0; i < SMALL_ITERATION_COUNT; ++i) {
+    for (int32_t i = 0; i < SMALL_ITERATION_COUNT; ++i)
+    {
         K key = static_cast<K>(i);
         V value = static_cast<V>(i * 100);
         cache.put(key, value);
     }
 
     // Try to get non-existent keys
-    for (int32_t i = EVICTION_START_KEY; i < EVICTION_END_KEY; ++i) {
+    for (int32_t i = EVICTION_START_KEY; i < EVICTION_END_KEY; ++i)
+    {
         K key = static_cast<K>(i);
         V retrievedValue;
         bool found = cache.get(key, retrievedValue);
@@ -326,12 +359,15 @@ void TestMiss(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extrac
 }
 
 template <typename K, typename V>
-void TestCapacityChange(DataExtractor& extractor) {
+void TestCapacityChange(DataExtractor& extractor)
+{
     size_t capacity = extractor.ExtractSizeT() % MAX_CAPACITY + 1;
     OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(capacity);
 
-    for (int32_t test = 0; test < CAPACITY_CHANGE_TESTS; ++test) {
-        for (int32_t i = 0; i < static_cast<int32_t>(capacity * CAPACITY_MULTIPLIER); ++i) {
+    for (int32_t test = 0; test < CAPACITY_CHANGE_TESTS; ++test)
+    {
+        for (int32_t i = 0; i < static_cast<int32_t>(capacity * CAPACITY_MULTIPLIER); ++i)
+        {
             K key = static_cast<K>(test * KEY_BASE_MULTIPLIER + i);
             V value = static_cast<V>(i);
             cache.put(key, value);
@@ -340,17 +376,20 @@ void TestCapacityChange(DataExtractor& extractor) {
 }
 
 template <typename K, typename V>
-void TestSequentialKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor) {
+void TestSequentialKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
+{
     (void)extractor;
     // Insert sequential keys
-    for (int32_t i = 0; i < LARGE_ITERATION_COUNT; ++i) {
+    for (int32_t i = 0; i < LARGE_ITERATION_COUNT; ++i)
+    {
         K key = static_cast<K>(i);
         V value = static_cast<V>(i * VALUE_MULTIPLIER_10);
         cache.put(key, value);
     }
 
     // Access in sequence
-    for (int32_t i = 0; i < LARGE_ITERATION_COUNT; ++i) {
+    for (int32_t i = 0; i < LARGE_ITERATION_COUNT; ++i)
+    {
         K key = static_cast<K>(i);
         V retrievedValue;
         (void)cache.get(key, retrievedValue);
@@ -358,14 +397,17 @@ void TestSequentialKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtract
 }
 
 template <typename K, typename V>
-void TestRandomKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor) {
-    for (int32_t i = 0; i < LARGE_ITERATION_COUNT && extractor.HasMore(); ++i) {
+void TestRandomKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
+{
+    for (int32_t i = 0; i < LARGE_ITERATION_COUNT && extractor.HasMore(); ++i)
+    {
         K key = static_cast<K>(extractor.ExtractInt32());
         V value = static_cast<V>(extractor.ExtractInt32());
         cache.put(key, value);
     }
 
-    for (int32_t i = 0; i < LARGE_ITERATION_COUNT && extractor.HasMore(); ++i) {
+    for (int32_t i = 0; i < LARGE_ITERATION_COUNT && extractor.HasMore(); ++i)
+    {
         K key = static_cast<K>(extractor.ExtractInt32());
         V retrievedValue;
         (void)cache.get(key, retrievedValue);
@@ -373,10 +415,12 @@ void TestRandomKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& 
 }
 
 template <typename K, typename V>
-void TestHotKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor) {
+void TestHotKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
+{
     (void)extractor;
     // Insert items
-    for (int32_t i = 0; i < LARGE_ITERATION_COUNT; ++i) {
+    for (int32_t i = 0; i < LARGE_ITERATION_COUNT; ++i)
+    {
         K key = static_cast<K>(i);
         V value = static_cast<V>(i * 100);
         cache.put(key, value);
@@ -388,7 +432,8 @@ void TestHotKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& ext
     K hotKey3 = static_cast<K>(HOT_KEY_BASE_3);
 
     // Access some keys repeatedly (hot keys)
-    for (int32_t i = 0; i < MEDIUM_ITERATION_COUNT; ++i) {
+    for (int32_t i = 0; i < MEDIUM_ITERATION_COUNT; ++i)
+    {
         V value1;
         V value2;
         V value3;
@@ -398,7 +443,8 @@ void TestHotKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& ext
     }
 
     // Fill cache to trigger eviction
-    for (int32_t i = EVICTION_START_KEY; i < EVICTION_END_KEY; ++i) {
+    for (int32_t i = EVICTION_START_KEY; i < EVICTION_END_KEY; ++i)
+    {
         K key = static_cast<K>(i);
         V value = static_cast<V>(i);
         cache.put(key, value);
@@ -417,10 +463,12 @@ void TestHotKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& ext
 }
 
 template <typename K, typename V>
-void TestDuplicateKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor) {
+void TestDuplicateKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
+{
     (void)extractor;
     K key = static_cast<K>(SPECIAL_KEY_VALUE);
-    for (int32_t i = 0; i < LARGE_ITERATION_COUNT; ++i) {
+    for (int32_t i = 0; i < LARGE_ITERATION_COUNT; ++i)
+    {
         V value = static_cast<V>(i);
         cache.put(key, value);
     }
@@ -431,12 +479,14 @@ void TestDuplicateKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtracto
 }
 
 template <typename K, typename V>
-void TestBoundaryCapacity(DataExtractor& extractor) {
+void TestBoundaryCapacity(DataExtractor& extractor)
+{
     (void)extractor;
     // Test with capacity 1
     {
         OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(MIN_CAPACITY);
-        for (int32_t i = 0; i < LARGE_ITERATION_COUNT; ++i) {
+        for (int32_t i = 0; i < LARGE_ITERATION_COUNT; ++i)
+        {
             K key = static_cast<K>(i);
             V value = static_cast<V>(i);
             cache.put(key, value);
@@ -446,7 +496,8 @@ void TestBoundaryCapacity(DataExtractor& extractor) {
     // Test with small capacity
     {
         OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(MIN_CAPACITY + 1);
-        for (int32_t i = 0; i < SMALL_ITERATION_COUNT * CAPACITY_MULTIPLIER; ++i) {
+        for (int32_t i = 0; i < SMALL_ITERATION_COUNT * CAPACITY_MULTIPLIER; ++i)
+        {
             K key = static_cast<K>(i);
             V value = static_cast<V>(i);
             cache.put(key, value);
@@ -456,7 +507,8 @@ void TestBoundaryCapacity(DataExtractor& extractor) {
     // Test with large capacity
     {
         OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(LARGE_CACHE_CAPACITY);
-        for (int32_t i = 0; i < LARGE_CACHE_ITEMS; ++i) {
+        for (int32_t i = 0; i < LARGE_CACHE_ITEMS; ++i)
+        {
             K key = static_cast<K>(i);
             V value = static_cast<V>(i);
             cache.put(key, value);
@@ -466,7 +518,8 @@ void TestBoundaryCapacity(DataExtractor& extractor) {
     // Test with extra large item count
     {
         OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(EXTRA_LARGE_CACHE_ITEMS);
-        for (int32_t i = 0; i < EXTRA_LARGE_CACHE_ITEMS; ++i) {
+        for (int32_t i = 0; i < EXTRA_LARGE_CACHE_ITEMS; ++i)
+        {
             K key = static_cast<K>(i);
             V value = static_cast<V>(i * 5);
             cache.put(key, value);
@@ -475,24 +528,30 @@ void TestBoundaryCapacity(DataExtractor& extractor) {
 }
 
 template <typename K, typename V>
-void TestMixedOperations(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor) {
-    for (int32_t i = 0; i < MEDIUM_ITERATION_COUNT && extractor.HasMore(); ++i) {
+void TestMixedOperations(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
+{
+    for (int32_t i = 0; i < MEDIUM_ITERATION_COUNT && extractor.HasMore(); ++i)
+    {
         uint8_t op = extractor.ExtractUInt8() % OP_MOD;
 
-        switch (op) {
-            case MIXED_OP_PUT: {
+        switch (op)
+        {
+            case MIXED_OP_PUT:
+            {
                 K key = static_cast<K>(extractor.ExtractInt32());
                 V value = static_cast<V>(extractor.ExtractInt32());
                 cache.put(key, value);
                 break;
             }
-            case MIXED_OP_GET_EXISTING: {
+            case MIXED_OP_GET_EXISTING:
+            {
                 K key = static_cast<K>(extractor.ExtractInt32() % KEY_MOD);
                 V value;
                 (void)cache.get(key, value);
                 break;
             }
-            case MIXED_OP_GET_NONEXISTING: {
+            case MIXED_OP_GET_NONEXISTING:
+            {
                 K key = static_cast<K>(KEY_OFFSET + extractor.ExtractInt32() % KEY_MOD);
                 V value;
                 (void)cache.get(key, value);
@@ -505,15 +564,18 @@ void TestMixedOperations(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtrac
 }
 
 template <typename K, typename V>
-void TestLargeCache(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor) {
+void TestLargeCache(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
+{
     size_t numOps = extractor.ExtractSizeT() % LARGE_OPS_MOD + LARGE_OPS_BASE;
 
-    for (size_t i = 0; i < numOps; ++i) {
+    for (size_t i = 0; i < numOps; ++i)
+    {
         K key = static_cast<K>(i);
         V value = static_cast<V>(i * VALUE_MULTIPLIER_1000);
         cache.put(key, value);
 
-        if (i % READ_INTERVAL == 0) {
+        if (i % READ_INTERVAL == 0)
+        {
             K readKey = static_cast<K>(i - READ_KEY_OFFSET);
             V retrievedValue;
             (void)cache.get(readKey, retrievedValue);
@@ -522,8 +584,10 @@ void TestLargeCache(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& 
 }
 
 template <typename K, typename V>
-void TestSmallCache(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor) {
-    for (int32_t i = 0; i < LARGE_ITERATION_COUNT && extractor.HasMore(); ++i) {
+void TestSmallCache(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
+{
+    for (int32_t i = 0; i < LARGE_ITERATION_COUNT && extractor.HasMore(); ++i)
+    {
         K key = static_cast<K>(extractor.ExtractInt32());
         V value = static_cast<V>(extractor.ExtractInt32());
         cache.put(key, value);
@@ -535,31 +599,36 @@ void TestSmallCache(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& 
 }
 
 template <typename K, typename V>
-void TestPatternFuzzing(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor) {
+void TestPatternFuzzing(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
+{
     (void)extractor;
     // Pattern 1: Same key
     K sameKey = static_cast<K>(999);
-    for (int32_t i = 0; i < MEDIUM_ITERATION_COUNT; ++i) {
+    for (int32_t i = 0; i < MEDIUM_ITERATION_COUNT; ++i)
+    {
         V value = static_cast<V>(i);
         cache.put(sameKey, value);
     }
 
     // Pattern 2: Alternating keys
-    for (int32_t i = 0; i < MEDIUM_ITERATION_COUNT; ++i) {
+    for (int32_t i = 0; i < MEDIUM_ITERATION_COUNT; ++i)
+    {
         K key = static_cast<K>((i % 2 == 0) ? 100 : 200);
         V value = static_cast<V>(i);
         cache.put(key, value);
     }
 
     // Pattern 3: Hash-like distribution
-    for (int32_t i = 0; i < MEDIUM_ITERATION_COUNT; ++i) {
+    for (int32_t i = 0; i < MEDIUM_ITERATION_COUNT; ++i)
+    {
         K key = static_cast<K>((i * PATTERN_HASH_MOD) % 1000);
         V value = static_cast<V>(i * PATTERN_MULTIPLIER);
         cache.put(key, value);
     }
 
     // Pattern 4: Sequential burst
-    for (int32_t i = 0; i < BURST_ITERATION_COUNT; ++i) {
+    for (int32_t i = 0; i < BURST_ITERATION_COUNT; ++i)
+    {
         K key = static_cast<K>(i);
         V value = static_cast<V>(i * VALUE_MULTIPLIER_100);
         cache.put(key, value);
@@ -567,32 +636,39 @@ void TestPatternFuzzing(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtract
 }
 
 template <typename K, typename V>
-void TestStressTest(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor) {
+void TestStressTest(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
+{
     size_t numOps = extractor.ExtractSizeT() % STRESS_OPS_MOD + STRESS_OPS_BASE;
 
-    for (size_t i = 0; i < numOps; ++i) {
+    for (size_t i = 0; i < numOps; ++i)
+    {
         uint8_t op = extractor.ExtractUInt8() % STRESS_OP_MOD;
 
-        switch (op) {
-            case STRESS_OP_PUT_RANDOM: {
+        switch (op)
+        {
+            case STRESS_OP_PUT_RANDOM:
+            {
                 K key = static_cast<K>(extractor.ExtractInt32());
                 V value = static_cast<V>(extractor.ExtractInt32());
                 cache.put(key, value);
                 break;
             }
-            case STRESS_OP_GET_RANDOM: {
+            case STRESS_OP_GET_RANDOM:
+            {
                 K key = static_cast<K>(extractor.ExtractInt32());
                 V value;
                 (void)cache.get(key, value);
                 break;
             }
-            case STRESS_OP_PUT_SEQ: {
+            case STRESS_OP_PUT_SEQ:
+            {
                 K key = static_cast<K>(i);
                 V value = static_cast<V>(i * VALUE_MULTIPLIER_7);
                 cache.put(key, value);
                 break;
             }
-            case STRESS_OP_GET_PREV: {
+            case STRESS_OP_GET_PREV:
+            {
                 K key = static_cast<K>(i - 1);
                 V value;
                 (void)cache.get(key, value);
@@ -605,18 +681,22 @@ void TestStressTest(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& 
 }
 
 template <typename K, typename V>
-void TestHotKeyAccess(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor) {
+void TestHotKeyAccess(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
+{
     (void)extractor;
     // Insert a set of initial items
-    for (int32_t i = 0; i < DEFAULT_CAPACITY; ++i) {
+    for (int32_t i = 0; i < DEFAULT_CAPACITY; ++i)
+    {
         K key = static_cast<K>(i);
         V value = static_cast<V>(i * 10);
         cache.put(key, value);
     }
 
     // Access middle items to make them "hot"
-    for (int32_t i = 0; i < STRESS_ITERATION_COUNT / STRESS_ITER_DIV; ++i) {
-        for (int32_t j = HOT_KEY_RANGE_START; j < HOT_KEY_RANGE_END; ++j) {
+    for (int32_t i = 0; i < STRESS_ITERATION_COUNT / STRESS_ITER_DIV; ++i)
+    {
+        for (int32_t j = HOT_KEY_RANGE_START; j < HOT_KEY_RANGE_END; ++j)
+        {
             K key = static_cast<K>(j);
             V retrievedValue;
             (void)cache.get(key, retrievedValue);
@@ -624,14 +704,16 @@ void TestHotKeyAccess(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor
     }
 
     // Fill beyond capacity
-    for (int32_t i = DEFAULT_CAPACITY; i < CAPACITY_DOUBLED; ++i) {
+    for (int32_t i = DEFAULT_CAPACITY; i < CAPACITY_DOUBLED; ++i)
+    {
         K key = static_cast<K>(i);
         V value = static_cast<V>(i * VALUE_MULTIPLIER_10);
         cache.put(key, value);
     }
 
     // Check hot keys should still be accessible
-    for (int32_t j = HOT_KEY_RANGE_START; j < HOT_KEY_RANGE_END; ++j) {
+    for (int32_t j = HOT_KEY_RANGE_START; j < HOT_KEY_RANGE_END; ++j)
+    {
         K key = static_cast<K>(j);
         V retrievedValue;
         bool found = cache.get(key, retrievedValue);
@@ -642,100 +724,117 @@ void TestHotKeyAccess(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor
 using CacheTestCaseFunc = void (*)(DataExtractor&, size_t);
 
 template <typename K, typename V>
-void RunTestBasicPutGet(DataExtractor& extractor, size_t capacity) {
+void RunTestBasicPutGet(DataExtractor& extractor, size_t capacity)
+{
     OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(capacity);
     TestBasicPutGet(cache, extractor);
 }
 
 template <typename K, typename V>
-void RunTestEviction(DataExtractor& extractor, size_t capacity) {
+void RunTestEviction(DataExtractor& extractor, size_t capacity)
+{
     OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(capacity);
     TestEviction(cache, capacity, extractor);
 }
 
 template <typename K, typename V>
-void RunTestUpdate(DataExtractor& extractor, size_t capacity) {
+void RunTestUpdate(DataExtractor& extractor, size_t capacity)
+{
     OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(capacity);
     TestUpdate(cache, extractor);
 }
 
 template <typename K, typename V>
-void RunTestMiss(DataExtractor& extractor, size_t capacity) {
+void RunTestMiss(DataExtractor& extractor, size_t capacity)
+{
     OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(capacity);
     TestMiss(cache, extractor);
 }
 
 template <typename K, typename V>
-void RunTestCapacityChange(DataExtractor& extractor, size_t /* capacity */) {
+void RunTestCapacityChange(DataExtractor& extractor, size_t /* capacity */)
+{
     TestCapacityChange<K, V>(extractor);
 }
 
 template <typename K, typename V>
-void RunTestSequentialKeys(DataExtractor& extractor, size_t capacity) {
+void RunTestSequentialKeys(DataExtractor& extractor, size_t capacity)
+{
     OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(capacity);
     TestSequentialKeys(cache, extractor);
 }
 
 template <typename K, typename V>
-void RunTestRandomKeys(DataExtractor& extractor, size_t capacity) {
+void RunTestRandomKeys(DataExtractor& extractor, size_t capacity)
+{
     OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(capacity);
     TestRandomKeys(cache, extractor);
 }
 
 template <typename K, typename V>
-void RunTestHotKeys(DataExtractor& extractor, size_t capacity) {
+void RunTestHotKeys(DataExtractor& extractor, size_t capacity)
+{
     OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(capacity);
     TestHotKeys(cache, extractor);
 }
 
 template <typename K, typename V>
-void RunTestDuplicateKeys(DataExtractor& extractor, size_t capacity) {
+void RunTestDuplicateKeys(DataExtractor& extractor, size_t capacity)
+{
     OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(capacity);
     TestDuplicateKeys(cache, extractor);
 }
 
 template <typename K, typename V>
-void RunTestBoundaryCapacity(DataExtractor& extractor, size_t /* capacity */) {
+void RunTestBoundaryCapacity(DataExtractor& extractor, size_t /* capacity */)
+{
     TestBoundaryCapacity<K, V>(extractor);
 }
 
 template <typename K, typename V>
-void RunTestMixedOperations(DataExtractor& extractor, size_t capacity) {
+void RunTestMixedOperations(DataExtractor& extractor, size_t capacity)
+{
     OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(capacity);
     TestMixedOperations(cache, extractor);
 }
 
 template <typename K, typename V>
-void RunTestLargeCache(DataExtractor& extractor, size_t capacity) {
+void RunTestLargeCache(DataExtractor& extractor, size_t capacity)
+{
     OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(capacity);
     TestLargeCache(cache, extractor);
 }
 
 template <typename K, typename V>
-void RunTestSmallCache(DataExtractor& extractor, size_t capacity) {
+void RunTestSmallCache(DataExtractor& extractor, size_t capacity)
+{
     OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(capacity);
     TestSmallCache(cache, extractor);
 }
 
 template <typename K, typename V>
-void RunTestPatternFuzzing(DataExtractor& extractor, size_t capacity) {
+void RunTestPatternFuzzing(DataExtractor& extractor, size_t capacity)
+{
     OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(capacity);
     TestPatternFuzzing(cache, extractor);
 }
 
 template <typename K, typename V>
-void RunTestStressTest(DataExtractor& extractor, size_t capacity) {
+void RunTestStressTest(DataExtractor& extractor, size_t capacity)
+{
     OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(capacity);
     TestStressTest(cache, extractor);
 }
 
 template <typename K, typename V>
-void RunTestHotKeyAccess(DataExtractor& extractor, size_t capacity) {
+void RunTestHotKeyAccess(DataExtractor& extractor, size_t capacity)
+{
     OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(capacity);
     TestHotKeyAccess(cache, extractor);
 }
 
-static const CacheTestCaseFunc CACHE_TEST_FUNCS[TEST_CASE_COUNT] = {
+static const CacheTestCaseFunc CACHE_TEST_FUNCS[TEST_CASE_COUNT] =
+{
     RunTestBasicPutGet<int32_t, int32_t>,
     RunTestEviction<int32_t, int32_t>,
     RunTestUpdate<int32_t, int32_t>,
@@ -755,8 +854,10 @@ static const CacheTestCaseFunc CACHE_TEST_FUNCS[TEST_CASE_COUNT] = {
 };
 
 // Helper function to dispatch test case (reduces cyclomatic complexity)
-void DispatchTestCase(uint8_t testCase, DataExtractor& extractor, size_t capacity) {
-    if (testCase < TEST_CASE_COUNT) {
+void DispatchTestCase(uint8_t testCase, DataExtractor& extractor, size_t capacity)
+{
+    if (testCase < TEST_CASE_COUNT)
+    {
         CACHE_TEST_FUNCS[testCase](extractor, capacity);
     }
 }
@@ -765,12 +866,15 @@ void DispatchTestCase(uint8_t testCase, DataExtractor& extractor, size_t capacit
 // Main Fuzz Entry Point
 // ============================================================================
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-    if (data == nullptr || size < MIN_FUZZ_INPUT_SIZE) {
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+{
+    if (data == nullptr || size < MIN_FUZZ_INPUT_SIZE)
+    {
         return 0;
     }
 
-    if (size > MAX_FUZZ_INPUT_SIZE) {
+    if (size > MAX_FUZZ_INPUT_SIZE)
+    {
         return 0;
     }
 
