@@ -70,7 +70,10 @@
       "test": [
         "//foundation/resourceschedule/soc_perf:test_soc_perf_all",
         "//foundation/resourceschedule/soc_perf/test/fuzztest:fuzztest",
-        "//foundation/resourceschedule/soc_perf/test/fuzztest/lxjRUC_fuzzer:fuzztest"
+        "//foundation/resourceschedule/soc_perf/test/fuzztest/lxjRUC_fuzzer:fuzztest",
+        "//foundation/resourceschedule/soc_perf/test/fuzztest/socperf_config_fuzzer:fuzztest",
+        "//foundation/resourceschedule/soc_perf/test/fuzztest/socperf_integration_fuzzer:fuzztest",
+        "//foundation/resourceschedule/soc_perf/test/fuzztest/socperf_lrucache_fuzzer:fuzztest"
       ]
     }
   }
