@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2026 OpenAtom Foundation
+ * Copyright (c) 2024-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -138,6 +138,67 @@ constexpr uint8_t COMBINED_OP_MOD = 12;
 constexpr int32_t ERROR_TEST_VALUE_NEG = -999;
 constexpr int32_t ERROR_TEST_VALUE_POS = 99999;
 
+// String length boundary values (G.CNS.02)
+constexpr size_t STRING_LEN_SINGLE = 1;
+constexpr size_t STRING_LEN_255 = 255;
+constexpr size_t STRING_LEN_256 = 256;
+constexpr size_t STRING_LEN_1023 = 1023;
+constexpr size_t STRING_LEN_1024 = 1024;
+constexpr size_t STRING_LEN_4095 = 4095;
+constexpr size_t STRING_LEN_4096 = 4096;
+
+// Boundary test values (G.CNS.02)
+constexpr int32_t BOUNDARY_VALUE_999 = 999;
+constexpr int32_t BOUNDARY_VALUE_5900 = 5900;
+constexpr int32_t BOUNDARY_VALUE_6000 = 6000;
+constexpr int32_t NEAR_INT32_MAX_NEG = -2147483647;
+
+// Toggle and modulo constants (G.CNS.02)
+constexpr int32_t TOGGLE_MOD = 2;
+constexpr int32_t TOGGLE_EVEN = 0;
+constexpr int32_t RESET_INTERVAL = 10;
+constexpr int32_t RESET_INDEX = 9;
+constexpr int32_t TRANSITION_MOD = 8;
+constexpr int32_t NUM_TRANSITIONS_MOD = 30;
+constexpr int32_t NUM_TRANSITIONS_BASE = 10;
+constexpr int32_t MODE_INDEX_MOD = 4;
+constexpr int32_t RACE_MODE_INDEX_MOD = 3;
+constexpr int32_t RACE_LIMIT_MOD = 5;
+constexpr int32_t THERMAL_OFFSET = 5;
+constexpr int32_t THERMAL_INCREMENT = 1;
+
+// Config test values (G.CNS.02)
+constexpr int64_t CONFIG_VALUE_SMALL = 100;
+constexpr int64_t CONFIG_VALUE_LARGE = 1000;
+constexpr int64_t CONFIG_RACE_MULTIPLIER = 100;
+constexpr int64_t RES_CONFIG_GPU = 2000;
+constexpr int64_t RES_CONFIG_DDR = 3000;
+constexpr int64_t RES_CONFIG_NPU = 4000;
+
+// Combined operation type constants (G.CNS.02)
+constexpr uint8_t COMBINED_OP_PERF_REQUEST = 0;
+constexpr uint8_t COMBINED_OP_PERF_REQUEST_EX = 1;
+constexpr uint8_t COMBINED_OP_POWER_LIMIT_BOOST = 2;
+constexpr uint8_t COMBINED_OP_THERMAL_LIMIT_BOOST = 3;
+constexpr uint8_t COMBINED_OP_LIMIT_REQUEST = 4;
+constexpr uint8_t COMBINED_OP_SET_REQUEST_STATUS = 5;
+constexpr uint8_t COMBINED_OP_SET_THERMAL_LEVEL = 6;
+constexpr uint8_t COMBINED_OP_REQUEST_DEVICE_MODE = 7;
+constexpr uint8_t COMBINED_OP_REQUEST_CMD_ID_COUNT = 8;
+constexpr uint8_t COMBINED_OP_RESET_CLIENT = 9;
+constexpr uint8_t COMBINED_OP_IS_VALID_RES_ID = 10;
+constexpr uint8_t COMBINED_OP_IS_GOV_RES_ID = 11;
+
+// State transition type constants (G.CNS.02)
+constexpr uint8_t TRANSITION_ENABLE_STATUS = 0;
+constexpr uint8_t TRANSITION_DISABLE_STATUS = 1;
+constexpr uint8_t TRANSITION_THERMAL_INC = 2;
+constexpr uint8_t TRANSITION_THERMAL_DEC = 3;
+constexpr uint8_t TRANSITION_POWER_BOOST = 4;
+constexpr uint8_t TRANSITION_THERMAL_BOOST = 5;
+constexpr uint8_t TRANSITION_DEVICE_MODE = 6;
+constexpr uint8_t TRANSITION_PERF_REQUEST = 7;
+
 // ============================================================================
 // Inline Validation Functions
 // ============================================================================
@@ -269,9 +330,11 @@ public:
         if (ptr == nullptr) {
             return 0.0f;
         }
-        float value = 0.0f;
-        (void)memcpy_s(&value, sizeof(float), ptr, sizeof(float));
-        return value;
+    float value = 0.0f;
+    if (memcpy_s(&value, sizeof(float), ptr, sizeof(float)) != 0) {
+        return 0.0f;
+    }
+    return value;
     }
 
     std::string ExtractString(size_t maxLen = DEFAULT_STRING_LENGTH)
@@ -546,7 +609,7 @@ void TestCasePerfRequestEx(DataExtractor& extractor)
     client.PerfRequestEx(INT32_MIN, onOffTag, msg);
 
     for (int32_t i = 0; i < STRESS_ITERATIONS; i++) {
-        client.PerfRequestEx(cmdId, i % 2 == 0, "toggle");
+        client.PerfRequestEx(cmdId, i % TOGGLE_MOD == TOGGLE_EVEN, "toggle");
     }
 }
 
@@ -566,7 +629,7 @@ void TestCasePowerLimitBoost(DataExtractor& extractor)
     client.PowerLimitBoost(false, "boost_off_again");
 
     for (int32_t i = 0; i < STRESS_ITERATIONS; i++) {
-        client.PowerLimitBoost(i % 2 == 0, "stress_toggle");
+        client.PowerLimitBoost(i % TOGGLE_MOD == TOGGLE_EVEN, "stress_toggle");
     }
 
     client.PowerLimitBoost(onOffTag, "");
@@ -591,7 +654,7 @@ void TestCaseThermalLimitBoost(DataExtractor& extractor)
     client.ThermalLimitBoost(false, "thermal_boost_off_again");
 
     for (int32_t i = 0; i < STRESS_ITERATIONS; i++) {
-        client.ThermalLimitBoost(i % 2 == 0, "thermal_stress_toggle");
+        client.ThermalLimitBoost(i % TOGGLE_MOD == TOGGLE_EVEN, "thermal_stress_toggle");
     }
 
     client.ThermalLimitBoost(onOffTag, "");
@@ -628,15 +691,15 @@ void TestCaseLimitRequest(DataExtractor& extractor)
     client.LimitRequest(clientId, singleTag, singleConfig, "single_element");
 
     std::vector<int32_t> moreTags = { 1, 2, 3 };
-    std::vector<int64_t> fewerConfigs = { 100 };
+    std::vector<int64_t> fewerConfigs = { CONFIG_VALUE_SMALL };
     client.LimitRequest(clientId, moreTags, fewerConfigs, "mismatched");
 
     std::vector<int32_t> largeTags(MAX_VECTOR_SIZE, 1);
-    std::vector<int64_t> largeConfigs(MAX_VECTOR_SIZE, 1000);
+    std::vector<int64_t> largeConfigs(MAX_VECTOR_SIZE, CONFIG_VALUE_LARGE);
     client.LimitRequest(clientId, largeTags, largeConfigs, "large_arrays");
 
     std::vector<int32_t> resTags = { RES_ID_CPU, RES_ID_GPU, RES_ID_DDR, RES_ID_NPU };
-    std::vector<int64_t> resConfigs = { 1000, 2000, 3000, 4000 };
+    std::vector<int64_t> resConfigs = { CONFIG_VALUE_LARGE, RES_CONFIG_GPU, RES_CONFIG_DDR, RES_CONFIG_NPU };
     client.LimitRequest(clientId, resTags, resConfigs, "resource_tags");
 }
 
@@ -656,7 +719,7 @@ void TestCaseSetRequestStatus(DataExtractor& extractor)
     client.SetRequestStatus(false, "disable_again");
 
     for (int32_t i = 0; i < STRESS_ITERATIONS; i++) {
-        client.SetRequestStatus(i % 2 == 0, "rapid_toggle");
+        client.SetRequestStatus(i % TOGGLE_MOD == TOGGLE_EVEN, "rapid_toggle");
     }
 
     client.SetRequestStatus(status, "");
@@ -732,7 +795,7 @@ void TestCaseRequestDeviceMode(DataExtractor& extractor)
 
     std::string modes[] = { "game", "video", "camera", "performance" };
     for (int32_t i = 0; i < STRESS_ITERATIONS; i++) {
-        client.RequestDeviceMode(modes[i % 4], i % 2 == 0);
+        client.RequestDeviceMode(modes[i % MODE_INDEX_MOD], i % TOGGLE_MOD == TOGGLE_EVEN);
     }
 }
 
@@ -752,8 +815,8 @@ void TestCaseRequestCmdIdCount(DataExtractor& extractor)
     result = client.RequestCmdIdCount(std::string(STRING_LEN_XXLARGE, 'c'));
 
     client.PerfRequest(TEST_CMD_ID_BASE, "generate_count");
-    client.PerfRequest(TEST_CMD_ID_BASE + 1, "generate_count_2");
-    client.PerfRequest(TEST_CMD_ID_BASE + 2, "generate_count_3");
+    client.PerfRequest(TEST_CMD_ID_BASE + THERMAL_INCREMENT, "generate_count_2");
+    client.PerfRequest(TEST_CMD_ID_BASE + THERMAL_OFFSET, "generate_count_3");
     result = client.RequestCmdIdCount("after_state_change");
 }
 
@@ -771,7 +834,7 @@ void TestCaseResetClient(DataExtractor& extractor)
 
     client.ResetClient();
 
-    client.PerfRequest(TEST_CMD_ID_BASE + 1, "after_second_reset");
+    client.PerfRequest(TEST_CMD_ID_BASE + THERMAL_INCREMENT, "after_second_reset");
     client.SetThermalLevel(THERMAL_LEVEL_WARNING);
 
     for (int32_t i = 0; i < THERMAL_LOOP_BOUND; i++) {
@@ -792,17 +855,17 @@ void TestCaseConfigIsValidResId(DataExtractor& extractor)
     config.IsValidResId(0);
     config.IsValidResId(1);
     config.IsValidResId(-1);
-    config.IsValidResId(999);
-    config.IsValidResId(1000);
-    config.IsValidResId(5999);
-    config.IsValidResId(6000);
+    config.IsValidResId(BOUNDARY_VALUE_999);
+    config.IsValidResId(FUZZ_MIN_RESOURCE_ID);
+    config.IsValidResId(FUZZ_MAX_RESOURCE_ID);
+    config.IsValidResId(BOUNDARY_VALUE_6000);
     config.IsValidResId(INT32_MAX);
     config.IsValidResId(INT32_MIN);
 
     for (int32_t i = BOUNDARY_LOOP_START; i <= BOUNDARY_LOOP_END; i++) {
         config.IsValidResId(i);
     }
-    for (int32_t i = 5900; i <= BOUNDARY_RANGE_END; i++) {
+    for (int32_t i = BOUNDARY_VALUE_5900; i <= BOUNDARY_RANGE_END; i++) {
         config.IsValidResId(i);
     }
 }
@@ -819,10 +882,10 @@ void TestCaseConfigIsGovResId(DataExtractor& extractor)
     config.IsGovResId(0);
     config.IsGovResId(1);
     config.IsGovResId(-1);
-    config.IsGovResId(999);
-    config.IsGovResId(1000);
-    config.IsGovResId(5999);
-    config.IsGovResId(6000);
+    config.IsGovResId(BOUNDARY_VALUE_999);
+    config.IsGovResId(FUZZ_MIN_RESOURCE_ID);
+    config.IsGovResId(FUZZ_MAX_RESOURCE_ID);
+    config.IsGovResId(BOUNDARY_VALUE_6000);
     config.IsGovResId(INT32_MAX);
     config.IsGovResId(INT32_MIN);
 
@@ -835,44 +898,44 @@ void TestCaseConfigIsGovResId(DataExtractor& extractor)
 void HandleCombinedSequenceOp(SocPerfClient& client, uint8_t op, DataExtractor& extractor)
 {
     switch (op) {
-        case 0:
+        case COMBINED_OP_PERF_REQUEST:
             client.PerfRequest(extractor.ExtractInt32(), extractor.ExtractString(STRING_LEN_MEDIUM));
             break;
-        case 1:
+        case COMBINED_OP_PERF_REQUEST_EX:
             client.PerfRequestEx(extractor.ExtractInt32(),
                 extractor.ExtractBool(), extractor.ExtractString(STRING_LEN_MEDIUM));
             break;
-        case 2:
+        case COMBINED_OP_POWER_LIMIT_BOOST:
             client.PowerLimitBoost(extractor.ExtractBool(), extractor.ExtractString(STRING_LEN_MEDIUM));
             break;
-        case 3:
+        case COMBINED_OP_THERMAL_LIMIT_BOOST:
             client.ThermalLimitBoost(extractor.ExtractBool(), extractor.ExtractString(STRING_LEN_MEDIUM));
             break;
-        case 4:
+        case COMBINED_OP_LIMIT_REQUEST:
             client.LimitRequest(extractor.ExtractInt32(),
                 extractor.ExtractInt32Vector(DEFAULT_VECTOR_SIZE),
                 extractor.ExtractInt64Vector(DEFAULT_VECTOR_SIZE),
                 extractor.ExtractString(STRING_LEN_MEDIUM));
             break;
-        case 5:
+        case COMBINED_OP_SET_REQUEST_STATUS:
             client.SetRequestStatus(extractor.ExtractBool(), extractor.ExtractString(STRING_LEN_MEDIUM));
             break;
-        case 6:
+        case COMBINED_OP_SET_THERMAL_LEVEL:
             client.SetThermalLevel(extractor.ExtractInt32());
             break;
-        case 7:
+        case COMBINED_OP_REQUEST_DEVICE_MODE:
             client.RequestDeviceMode(extractor.ExtractString(STRING_LEN_SMALL), extractor.ExtractBool());
             break;
-        case 8:
+        case COMBINED_OP_REQUEST_CMD_ID_COUNT:
             client.RequestCmdIdCount(extractor.ExtractString(STRING_LEN_MEDIUM));
             break;
-        case 9:
+        case COMBINED_OP_RESET_CLIENT:
             client.ResetClient();
             break;
-        case 10:
+        case COMBINED_OP_IS_VALID_RES_ID:
             SocPerfConfig::GetInstance().IsValidResId(extractor.ExtractInt32());
             break;
-        case 11:
+        case COMBINED_OP_IS_GOV_RES_ID:
             SocPerfConfig::GetInstance().IsGovResId(extractor.ExtractInt32());
             break;
         default:
@@ -907,17 +970,17 @@ void TestCaseBoundaryValues(DataExtractor& extractor)
     client.SetThermalLevel(INT32_MAX);
     client.SetThermalLevel(INT32_MIN);
     client.SetThermalLevel(0);
-    client.SetThermalLevel(-2147483647);
-    client.SetThermalLevel(2147483647);
+    client.SetThermalLevel(NEAR_INT32_MAX_NEG);
+    client.SetThermalLevel(INT32_MAX);
 
     client.PerfRequest(1, "");
-    client.PerfRequest(1, std::string(1, 'a'));
-    client.PerfRequest(1, std::string(255, 'b'));
-    client.PerfRequest(1, std::string(256, 'c'));
-    client.PerfRequest(1, std::string(1023, 'd'));
-    client.PerfRequest(1, std::string(1024, 'e'));
-    client.PerfRequest(1, std::string(4095, 'f'));
-    client.PerfRequest(1, std::string(4096, 'g'));
+    client.PerfRequest(1, std::string(STRING_LEN_SINGLE, 'a'));
+    client.PerfRequest(1, std::string(STRING_LEN_255, 'b'));
+    client.PerfRequest(1, std::string(STRING_LEN_256, 'c'));
+    client.PerfRequest(1, std::string(STRING_LEN_1023, 'd'));
+    client.PerfRequest(1, std::string(STRING_LEN_1024, 'e'));
+    client.PerfRequest(1, std::string(STRING_LEN_4095, 'f'));
+    client.PerfRequest(1, std::string(STRING_LEN_4096, 'g'));
 
     std::vector<int32_t> emptyTags;
     std::vector<int64_t> emptyConfigs;
@@ -956,8 +1019,8 @@ void TestCaseRaceSimulation(DataExtractor& extractor)
         client.SetThermalLevel(i % THERMAL_LOOP_BOUND);
 
         std::string modes[] = { "game", "video", "camera" };
-        client.RequestDeviceMode(modes[i % 3], true);
-        client.RequestDeviceMode(modes[i % 3], false);
+        client.RequestDeviceMode(modes[i % RACE_MODE_INDEX_MOD], true);
+        client.RequestDeviceMode(modes[i % RACE_MODE_INDEX_MOD], false);
 
         client.PerfRequest(i, "race_request");
         client.PerfRequestEx(i, true, "race_ex_on");
@@ -968,8 +1031,8 @@ void TestCaseRaceSimulation(DataExtractor& extractor)
 
     for (int32_t i = 0; i < STRESS_LOOP_MEDIUM; i++) {
         std::vector<int32_t> tags = { BOUNDARY_LOOP_START + i };
-        std::vector<int64_t> configs = { 100 * i };
-        client.LimitRequest(i % 5, tags, configs, "race_limit");
+        std::vector<int64_t> configs = { CONFIG_RACE_MULTIPLIER * i };
+        client.LimitRequest(i % RACE_LIMIT_MOD, tags, configs, "race_limit");
     }
 }
 
@@ -1001,7 +1064,7 @@ void TestCaseErrorPaths(DataExtractor& extractor)
     client.RequestCmdIdCount("after");
 
     for (int32_t i = 0; i < THERMAL_LOOP_BOUND; i++) {
-        client.SetRequestStatus(i % 2 == 0, "rapid_status");
+        client.SetRequestStatus(i % TOGGLE_MOD == TOGGLE_EVEN, "rapid_status");
         client.PerfRequest(i, "during_status_change");
     }
 
@@ -1097,7 +1160,7 @@ void TestCaseVectorFuzzing(DataExtractor& extractor)
     };
 
     for (const auto& sizeVec : sizes) {
-        std::vector<int64_t> configVec(sizeVec.size(), 100);
+        std::vector<int64_t> configVec(sizeVec.size(), CONFIG_VALUE_SMALL);
         client.LimitRequest(clientId, sizeVec, configVec, "size_test");
         g_callCounter++;
     }
@@ -1120,30 +1183,30 @@ void TestCaseVectorFuzzing(DataExtractor& extractor)
 void HandleStateTransition(SocPerfClient& client, uint8_t transition, uint8_t i)
 {
     switch (transition) {
-        case 0:
+        case TRANSITION_ENABLE_STATUS:
             client.SetRequestStatus(true, "transition_enable");
             break;
-        case 1:
+        case TRANSITION_DISABLE_STATUS:
             client.SetRequestStatus(false, "transition_disable");
             break;
-        case 2:
-            client.SetThermalLevel((i % THERMAL_LOOP_BOUND) + 1);
+        case TRANSITION_THERMAL_INC:
+            client.SetThermalLevel((i % THERMAL_LOOP_BOUND) + THERMAL_INCREMENT);
             break;
-        case 3:
-            client.SetThermalLevel(std::max(0, (i % THERMAL_LOOP_BOUND) - 5));
+        case TRANSITION_THERMAL_DEC:
+            client.SetThermalLevel(std::max(0, (i % THERMAL_LOOP_BOUND) - THERMAL_OFFSET));
             break;
-        case 4:
-            client.PowerLimitBoost(i % 2 == 0, "transition_power");
+        case TRANSITION_POWER_BOOST:
+            client.PowerLimitBoost(i % TOGGLE_MOD == TOGGLE_EVEN, "transition_power");
             break;
-        case 5:
-            client.ThermalLimitBoost(i % 2 == 0, "transition_thermal");
+        case TRANSITION_THERMAL_BOOST:
+            client.ThermalLimitBoost(i % TOGGLE_MOD == TOGGLE_EVEN, "transition_thermal");
             break;
-        case 6: {
+        case TRANSITION_DEVICE_MODE: {
             std::string modes[] = { "game", "video", "camera", "normal" };
-            client.RequestDeviceMode(modes[i % 4], i % 2 == 0);
+            client.RequestDeviceMode(modes[i % MODE_INDEX_MOD], i % TOGGLE_MOD == TOGGLE_EVEN);
             break;
         }
-        case 7:
+        case TRANSITION_PERF_REQUEST:
             client.PerfRequest(TEST_CMD_ID_BASE + i, "transition_request");
             break;
         default:
@@ -1161,13 +1224,13 @@ void TestCaseStateMachine(DataExtractor& extractor)
     client.SetRequestStatus(initialStatus, "initial_state");
     client.SetThermalLevel(initialLevel);
 
-    uint8_t numTransitions = extractor.ExtractUInt8() % 30 + 10;
+    uint8_t numTransitions = extractor.ExtractUInt8() % NUM_TRANSITIONS_MOD + NUM_TRANSITIONS_BASE;
 
     for (uint8_t i = 0; i < numTransitions && extractor.HasMore(); i++) {
-        uint8_t transition = extractor.ExtractUInt8() % 8;
+        uint8_t transition = extractor.ExtractUInt8() % TRANSITION_MOD;
         HandleStateTransition(client, transition, i);
 
-        if (i % 10 == 9) {
+        if (i % RESET_INTERVAL == RESET_INDEX) {
             client.ResetClient();
             client.SetRequestStatus(true, "reset_recovery");
         }
@@ -1179,76 +1242,37 @@ void TestCaseStateMachine(DataExtractor& extractor)
     client.SetThermalLevel(0);
 }
 
+using IntegrationTestCaseFunc = void (*)(DataExtractor&);
+
+static const IntegrationTestCaseFunc g_integrationTestFuncs[TEST_CASE_COUNT] = {
+    TestCaseInit,
+    TestCasePerfRequest,
+    TestCasePerfRequestEx,
+    TestCasePowerLimitBoost,
+    TestCaseThermalLimitBoost,
+    TestCaseLimitRequest,
+    TestCaseSetRequestStatus,
+    TestCaseSetThermalLevel,
+    TestCaseRequestDeviceMode,
+    TestCaseRequestCmdIdCount,
+    TestCaseResetClient,
+    TestCaseConfigIsValidResId,
+    TestCaseConfigIsGovResId,
+    TestCaseCombinedSequence,
+    TestCaseBoundaryValues,
+    TestCaseRaceSimulation,
+    TestCaseErrorPaths,
+    TestCaseStringFuzzing,
+    TestCaseVectorFuzzing,
+    TestCaseStateMachine,
+};
+
 // Helper function to dispatch test case
 void DispatchTestCase(uint8_t testCase, DataExtractor& extractor)
 {
-    SocPerfClient& client = GetSocPerfClient();
-
-    switch (testCase) {
-        case TEST_CASE_INIT:
-            TestCaseInit(extractor);
-            break;
-        case TEST_CASE_PERF_REQUEST:
-            TestCasePerfRequest(extractor);
-            break;
-        case TEST_CASE_PERF_REQUEST_EX:
-            TestCasePerfRequestEx(extractor);
-            break;
-        case TEST_CASE_POWER_LIMIT_BOOST:
-            TestCasePowerLimitBoost(extractor);
-            break;
-        case TEST_CASE_THERMAL_LIMIT_BOOST:
-            TestCaseThermalLimitBoost(extractor);
-            break;
-        case TEST_CASE_LIMIT_REQUEST:
-            TestCaseLimitRequest(extractor);
-            break;
-        case TEST_CASE_SET_REQUEST_STATUS:
-            TestCaseSetRequestStatus(extractor);
-            break;
-        case TEST_CASE_SET_THERMAL_LEVEL:
-            TestCaseSetThermalLevel(extractor);
-            break;
-        case TEST_CASE_REQUEST_DEVICE_MODE:
-            TestCaseRequestDeviceMode(extractor);
-            break;
-        case TEST_CASE_REQUEST_CMD_ID_COUNT:
-            TestCaseRequestCmdIdCount(extractor);
-            break;
-        case TEST_CASE_RESET_CLIENT:
-            TestCaseResetClient(extractor);
-            break;
-        case TEST_CASE_CONFIG_ISVALIDRESID:
-            TestCaseConfigIsValidResId(extractor);
-            break;
-        case TEST_CASE_CONFIG_ISGOVERRESID:
-            TestCaseConfigIsGovResId(extractor);
-            break;
-        case TEST_CASE_COMBINED_SEQUENCE:
-            TestCaseCombinedSequence(extractor);
-            break;
-        case TEST_CASE_BOUNDARY_VALUES:
-            TestCaseBoundaryValues(extractor);
-            break;
-        case TEST_CASE_RACE_SIMULATION:
-            TestCaseRaceSimulation(extractor);
-            break;
-        case TEST_CASE_ERROR_PATHS:
-            TestCaseErrorPaths(extractor);
-            break;
-        case TEST_CASE_STRING_FUZZING:
-            TestCaseStringFuzzing(extractor);
-            break;
-        case TEST_CASE_VECTOR_FUZZING:
-            TestCaseVectorFuzzing(extractor);
-            break;
-        case TEST_CASE_STATE_MACHINE:
-            TestCaseStateMachine(extractor);
-            break;
-        default:
-            break;
+    if (testCase < TEST_CASE_COUNT) {
+        g_integrationTestFuncs[testCase](extractor);
     }
-    (void)client;
 }
 
 // ============================================================================

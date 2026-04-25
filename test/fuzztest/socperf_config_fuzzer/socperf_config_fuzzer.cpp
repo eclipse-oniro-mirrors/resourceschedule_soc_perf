@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2026 OpenAtom Foundation
+ * Copyright (c) 2024-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -87,6 +87,13 @@ constexpr int32_t MAX_XML_RESOURCE_ITEMS = 10;
 constexpr int64_t VALUE_MULTIPLIER_1M = 1000000;
 constexpr int64_t VALUE_MULTIPLIER_2M = 2000000;
 constexpr int64_t DEFAULT_VALUE_BASE = 100000000;
+
+// Additional constants for magic number replacement (G.CNS.02)
+constexpr int32_t BINARY_MOD = 2;
+constexpr int32_t PAIR_MULTIPLIER = 2;
+constexpr int32_t CMD_ID_RANGE_SIZE = 10000;
+constexpr int32_t GOV_RES_ID_LOOP_STEP = 100;
+constexpr int32_t PERSIST_MODE_TEST_VALUE = 100;
 
 // Test case selectors
 constexpr uint8_t TEST_CONFIG_INIT = 0;
@@ -423,13 +430,13 @@ void GenerateResourceEntry(std::string& xml, DataExtractor& extractor)
         pairId = 0;
     }
 
-    int32_t mode = extractor.ExtractInt32() % 2;
-    int32_t persistMode = extractor.ExtractInt32() % 2;
-    int32_t trace = extractor.ExtractInt32() % 2;
+    int32_t mode = extractor.ExtractInt32() % BINARY_MOD;
+    int32_t persistMode = extractor.ExtractInt32() % BINARY_MOD;
+    int32_t trace = extractor.ExtractInt32() % BINARY_MOD;
     int64_t defValue = extractor.ExtractInt64() % DEFAULT_VALUE_BASE;
 
     char buffer[BUFFER_SIZE_LARGE];
-    (void)snprintf_s(buffer, sizeof(buffer),
+    int ret = snprintf_s(buffer, sizeof(buffer),
         R"(        <res id="%d" name="%s" pair="%d" mode="%d" switch="%d" trace="%d">
             <default>%lld</default>
             <path>/sys/test/path%d</path>
@@ -440,9 +447,10 @@ void GenerateResourceEntry(std::string& xml, DataExtractor& extractor)
         static_cast<long long>(defValue),
         static_cast<long long>(defValue + VALUE_MULTIPLIER_1M),
         static_cast<long long>(defValue + VALUE_MULTIPLIER_2M));
-
-    xml += "\n";
-    xml += buffer;
+    if (ret > 0) {
+        xml += "\n";
+        xml += buffer;
+    }
 }
 
 void GenerateResourceXmlFooter(std::string& xml)
@@ -471,10 +479,12 @@ std::string GenerateResourceXml(DataExtractor& extractor)
 void GenerateBoostConfigHeader(std::string& xml, const std::string& configMode)
 {
     char configHeader[BUFFER_SIZE_SMALL];
-    (void)snprintf_s(configHeader, sizeof(configHeader),
+    int ret = snprintf_s(configHeader, sizeof(configHeader),
         R"(
     <Config mode="%s">)", configMode.c_str());
-    xml += configHeader;
+    if (ret > 0) {
+        xml += configHeader;
+    }
 }
 
 void GenerateBoostConfigFooter(std::string& xml)
@@ -485,7 +495,7 @@ void GenerateBoostConfigFooter(std::string& xml)
 // Helper function to generate single cmd entry
 void GenerateBoostCmdEntry(std::string& xml, DataExtractor& extractor)
 {
-    int32_t cmdId = FUZZ_MIN_RESOURCE_ID + (extractor.ExtractInt32() % 10000);
+    int32_t cmdId = FUZZ_MIN_RESOURCE_ID + (extractor.ExtractInt32() % CMD_ID_RANGE_SIZE);
     std::string cmdName = extractor.ExtractString(MEDIUM_STRING_LENGTH);
     if (cmdName.empty()) {
         cmdName = "Cmd" + std::to_string(cmdId);
@@ -493,10 +503,10 @@ void GenerateBoostCmdEntry(std::string& xml, DataExtractor& extractor)
 
     int32_t thermalLvl = extractor.ExtractInt32() % FUZZ_LOOP_BOUND_SMALL;
     int32_t duration = extractor.ExtractInt32() % DEFAULT_VALUE_BASE;
-    int32_t interaction = extractor.ExtractInt32() % 2;
+    int32_t interaction = extractor.ExtractInt32() % BINARY_MOD;
 
     char cmdBuffer[BUFFER_SIZE_LARGE];
-    (void)snprintf_s(cmdBuffer, sizeof(cmdBuffer),
+    int ret = snprintf_s(cmdBuffer, sizeof(cmdBuffer),
         R"(
         <cmd id="%d" name="%s" interaction="%d" mode="game=2000|video=3000">
             <Action thermalLvl="%d">
@@ -507,7 +517,9 @@ void GenerateBoostCmdEntry(std::string& xml, DataExtractor& extractor)
         </cmd>)",
         cmdId, cmdName.c_str(), interaction,
         thermalLvl, duration);
-    xml += cmdBuffer;
+    if (ret > 0) {
+        xml += cmdBuffer;
+    }
 }
 
 std::string GenerateBoostXml(DataExtractor& extractor)
@@ -607,7 +619,7 @@ void TestConfigIsGovResId(DataExtractor& extractor)
     config.IsGovResId(INT32_MAX);
     config.IsGovResId(INT32_MIN);
 
-    for (int32_t i = 0; i <= FUZZ_MAX_RESOURCE_ID; i += 100) {
+    for (int32_t i = 0; i <= FUZZ_MAX_RESOURCE_ID; i += GOV_RES_ID_LOOP_STEP) {
         config.IsGovResId(i);
     }
 
@@ -719,7 +731,7 @@ void TestConfigActionValidation(DataExtractor& extractor)
     int32_t numPairs = extractor.ExtractInt32() % FUZZ_LOOP_BOUND_MEDIUM;
 
     std::vector<int64_t> actionVars;
-    for (int32_t i = 0; i < numPairs * 2 && extractor.HasMore(); i++) {
+    for (int32_t i = 0; i < numPairs * PAIR_MULTIPLIER && extractor.HasMore(); i++) {
         actionVars.push_back(extractor.ExtractInt64());
     }
 
@@ -776,8 +788,8 @@ void TestConfigBoundary(DataExtractor& extractor)
     IsValidRangeResId(0);
 
     IsValidPersistMode(-1);
-    IsValidPersistMode(2);
-    IsValidPersistMode(100);
+    IsValidPersistMode(BINARY_MOD);
+    IsValidPersistMode(PERSIST_MODE_TEST_VALUE);
     IsValidPersistMode(INT32_MAX);
 
     IsNumber("");
@@ -836,7 +848,8 @@ void TestConfigXmlEmpty(DataExtractor& extractor)
 {
     (void)extractor;
     std::string emptyXml = "<?xml version=\"1.0\"?><Configs></Configs>";
-    std::string tempFile = "/tmp/fuzz_empty_" + std::to_string(static_cast<long>(time(nullptr))) + ".xml";
+    time_t currentTime = time(nullptr);
+    std::string tempFile = "/tmp/fuzz_empty_" + std::to_string(static_cast<long>(currentTime)) + ".xml";
 
     FILE* fp = fopen(tempFile.c_str(), "wb");
     if (fp != nullptr) {
@@ -872,11 +885,15 @@ void TestConfigRangeTest(DataExtractor& extractor)
         config.IsGovResId(id);
     }
 
-    for (int32_t id = FUZZ_MIN_RESOURCE_ID - RANGE_BOUNDARY_OFFSET; id <= FUZZ_MIN_RESOURCE_ID + RANGE_BOUNDARY_OFFSET; id++) {
+    int32_t minBoundaryStart = FUZZ_MIN_RESOURCE_ID - RANGE_BOUNDARY_OFFSET;
+    int32_t minBoundaryEnd = FUZZ_MIN_RESOURCE_ID + RANGE_BOUNDARY_OFFSET;
+    for (int32_t id = minBoundaryStart; id <= minBoundaryEnd; id++) {
         config.IsValidResId(id);
     }
 
-    for (int32_t id = FUZZ_MAX_RESOURCE_ID - RANGE_BOUNDARY_OFFSET; id <= FUZZ_MAX_RESOURCE_ID + RANGE_BOUNDARY_OFFSET; id++) {
+    int32_t maxBoundaryStart = FUZZ_MAX_RESOURCE_ID - RANGE_BOUNDARY_OFFSET;
+    int32_t maxBoundaryEnd = FUZZ_MAX_RESOURCE_ID + RANGE_BOUNDARY_OFFSET;
+    for (int32_t id = maxBoundaryStart; id <= maxBoundaryEnd; id++) {
         config.IsValidResId(id);
     }
 
@@ -933,60 +950,32 @@ void TestConfigHelperFunctions(DataExtractor& extractor)
     (void)min2;
 }
 
+using TestCaseFunc = void (*)(DataExtractor&);
+
+static const TestCaseFunc g_testCaseFuncs[TEST_CASE_COUNT] = {
+    TestConfigInit,
+    TestConfigIsValidResId,
+    TestConfigIsGovResId,
+    TestConfigXmlParsing,
+    TestConfigResourceValidation,
+    TestConfigGovValidation,
+    TestConfigSceneValidation,
+    TestConfigActionValidation,
+    TestConfigInterAction,
+    TestConfigBoundary,
+    TestConfigStringPatterns,
+    TestConfigXmlMalformed,
+    TestConfigXmlEmpty,
+    TestConfigDuplicateCheck,
+    TestConfigRangeTest,
+    TestConfigHelperFunctions,
+};
+
 // Helper function to dispatch test case (reduces cyclomatic complexity)
 void DispatchTestCase(uint8_t testCase, DataExtractor& extractor)
 {
-    switch (testCase) {
-        case TEST_CONFIG_INIT:
-            TestConfigInit(extractor);
-            break;
-        case TEST_CONFIG_ISVALIDRESID:
-            TestConfigIsValidResId(extractor);
-            break;
-        case TEST_CONFIG_ISGOVERRESID:
-            TestConfigIsGovResId(extractor);
-            break;
-        case TEST_CONFIG_XML_PARSING:
-            TestConfigXmlParsing(extractor);
-            break;
-        case TEST_CONFIG_RESOURCE_VALIDATION:
-            TestConfigResourceValidation(extractor);
-            break;
-        case TEST_CONFIG_GOV_VALIDATION:
-            TestConfigGovValidation(extractor);
-            break;
-        case TEST_CONFIG_SCENE_VALIDATION:
-            TestConfigSceneValidation(extractor);
-            break;
-        case TEST_CONFIG_ACTION_VALIDATION:
-            TestConfigActionValidation(extractor);
-            break;
-        case TEST_CONFIG_INTERACTION:
-            TestConfigInterAction(extractor);
-            break;
-        case TEST_CONFIG_BOUNDARY:
-            TestConfigBoundary(extractor);
-            break;
-        case TEST_CONFIG_STRING_PATTERNS:
-            TestConfigStringPatterns(extractor);
-            break;
-        case TEST_CONFIG_XML_MALFORMED:
-            TestConfigXmlMalformed(extractor);
-            break;
-        case TEST_CONFIG_XML_EMPTY:
-            TestConfigXmlEmpty(extractor);
-            break;
-        case TEST_CONFIG_DUPLICATE_CHECK:
-            TestConfigDuplicateCheck(extractor);
-            break;
-        case TEST_CONFIG_RANGE_TEST:
-            TestConfigRangeTest(extractor);
-            break;
-        case TEST_CONFIG_HELPER_FUNCTIONS:
-            TestConfigHelperFunctions(extractor);
-            break;
-        default:
-            break;
+    if (testCase < TEST_CASE_COUNT) {
+        g_testCaseFuncs[testCase](extractor);
     }
 }
 
