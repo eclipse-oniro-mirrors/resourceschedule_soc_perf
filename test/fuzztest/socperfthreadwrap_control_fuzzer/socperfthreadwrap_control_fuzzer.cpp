@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-#include "socperf_fuzz_mock.h"
+#include "socperf_fuzz_permission.h"
 #include "socperf_fuzz_utils.h"
 
 #define private public

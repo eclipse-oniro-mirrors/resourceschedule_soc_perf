@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-#include "socperf_fuzz_mock.h"
+#include "socperf_fuzz_permission.h"
 #include "socperf_fuzz_utils.h"
 
 #define private public
@@ -137,20 +137,26 @@ std::shared_ptr<SocPerfThreadWrap> MakeNonOwningWrap(SocPerfThreadWrap* wrap)
     return std::shared_ptr<SocPerfThreadWrap>(wrap, [](SocPerfThreadWrap*) {});
 }
 
+void DrainQueue(SocPerfThreadWrap& wrap)
+{
+    ffrt::task_handle barrier = wrap.socperfQueue_.submit_h([]() {});
+    wrap.socperfQueue_.wait(barrier);
+}
+
 void RunAsyncCoverageOnce()
 {
     static std::once_flag once;
     std::call_once(once, []() {
-        auto* initCore = new SocPerf();
-        (void)initCore->Init();
-        initCore->StopStatisticsTimer();
-
         SeedCoreConfig();
+        auto* initCore = new SocPerf();
         (void)initCore->CreateThreadWraps();
         if (initCore->socperfThreadWrap_ != nullptr) {
             PrepareWrap(*initCore->socperfThreadWrap_);
+            initCore->InitThreadWraps();
+            DrainQueue(*initCore->socperfThreadWrap_);
         }
-        initCore->InitThreadWraps();
+        initCore->enabled_ = true;
+        initCore->perfRequestEnable_ = true;
         initCore->CompleteEvent();
         initCore->StartStatisticsTimer();
         initCore->StopStatisticsTimer();
@@ -168,6 +174,7 @@ void RunAsyncCoverageOnce()
         requestCore->PerfRequestEx(CMD_LONG_PERF, true, "async_on");
         requestCore->PerfRequestEx(CMD_LONG_PERF, false, "async_off");
         requestCore->DoFreqActions(requestCore->GetActionsInfo(CMD_THERMAL_PERF), EVENT_INVALID, ACTION_TYPE_PERF);
+        DrainQueue(*requestWrap);
     });
 }
 
