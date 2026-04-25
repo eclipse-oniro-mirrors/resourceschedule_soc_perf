@@ -18,28 +18,28 @@
  * @brief Comprehensive fuzzing driver for SocPerf module integration testing.
  */
 
-#include <cstdint>
+#include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
-#include <string>
-#include <vector>
+#include <functional>
+#include <list>
 #include <memory>
 #include <mutex>
-#include <unordered_map>
 #include <set>
-#include <list>
-#include <atomic>
-#include <functional>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 // SocPerf headers
-#include "socperf_client.h"
-#include "socperf_action_type.h"
 #include "socperf.h"
+#include "socperf_action_type.h"
+#include "socperf_client.h"
 #include "socperf_common.h"
 #include "socperf_config.h"
-#include "socperf_thread_wrap.h"
-#include "socperf_server.h"
 #include "socperf_log.h"
+#include "socperf_server.h"
+#include "socperf_thread_wrap.h"
 
 namespace FuzzUtils {
 
@@ -203,18 +203,15 @@ constexpr uint8_t TRANSITION_PERF_REQUEST = 7;
 // Inline Validation Functions
 // ============================================================================
 
-inline bool CheckSize(size_t size, size_t minSize)
-{
+inline bool CheckSize(size_t size, size_t minSize) {
     return size >= minSize;
 }
 
-inline bool CheckPointer(const void* ptr)
-{
+inline bool CheckPointer(const void* ptr) {
     return ptr != nullptr;
 }
 
-inline bool CheckOffset(size_t offset, size_t size, size_t typeSize)
-{
+inline bool CheckOffset(size_t offset, size_t size, size_t typeSize) {
     return offset + typeSize <= size;
 }
 
@@ -223,14 +220,13 @@ inline bool CheckOffset(size_t offset, size_t size, size_t typeSize)
 // ============================================================================
 
 class DataExtractor {
-public:
+   public:
     explicit DataExtractor(const uint8_t* data, size_t size)
         : data_(data), size_(size), offset_(0) {}
 
     ~DataExtractor() = default;
 
-    uint8_t ExtractUInt8()
-    {
+    uint8_t ExtractUInt8() {
         const uint8_t* ptr = SafeRead(sizeof(uint8_t));
         if (ptr == nullptr) {
             return 0;
@@ -238,8 +234,7 @@ public:
         return *ptr;
     }
 
-    int8_t ExtractInt8()
-    {
+    int8_t ExtractInt8() {
         const uint8_t* ptr = SafeRead(sizeof(int8_t));
         if (ptr == nullptr) {
             return 0;
@@ -249,8 +244,7 @@ public:
         return value;
     }
 
-    uint16_t ExtractUInt16()
-    {
+    uint16_t ExtractUInt16() {
         const uint8_t* ptr = SafeRead(sizeof(uint16_t));
         if (ptr == nullptr) {
             return 0;
@@ -260,8 +254,7 @@ public:
         return value;
     }
 
-    int16_t ExtractInt16()
-    {
+    int16_t ExtractInt16() {
         const uint8_t* ptr = SafeRead(sizeof(int16_t));
         if (ptr == nullptr) {
             return 0;
@@ -271,8 +264,7 @@ public:
         return value;
     }
 
-    int32_t ExtractInt32()
-    {
+    int32_t ExtractInt32() {
         const uint8_t* ptr = SafeRead(sizeof(int32_t));
         if (ptr == nullptr) {
             return 0;
@@ -282,8 +274,7 @@ public:
         return value;
     }
 
-    uint32_t ExtractUInt32()
-    {
+    uint32_t ExtractUInt32() {
         const uint8_t* ptr = SafeRead(sizeof(uint32_t));
         if (ptr == nullptr) {
             return 0;
@@ -293,8 +284,7 @@ public:
         return value;
     }
 
-    int64_t ExtractInt64()
-    {
+    int64_t ExtractInt64() {
         const uint8_t* ptr = SafeRead(sizeof(int64_t));
         if (ptr == nullptr) {
             return 0;
@@ -304,8 +294,7 @@ public:
         return value;
     }
 
-    uint64_t ExtractUInt64()
-    {
+    uint64_t ExtractUInt64() {
         const uint8_t* ptr = SafeRead(sizeof(uint64_t));
         if (ptr == nullptr) {
             return 0;
@@ -315,8 +304,7 @@ public:
         return value;
     }
 
-    bool ExtractBool()
-    {
+    bool ExtractBool() {
         const uint8_t* ptr = SafeRead(sizeof(uint8_t));
         if (ptr == nullptr) {
             return false;
@@ -324,21 +312,19 @@ public:
         return *ptr != 0;
     }
 
-    float ExtractFloat()
-    {
+    float ExtractFloat() {
         const uint8_t* ptr = SafeRead(sizeof(float));
         if (ptr == nullptr) {
             return 0.0f;
         }
-    float value = 0.0f;
-    if (memcpy_s(&value, sizeof(float), ptr, sizeof(float)) != 0) {
-        return 0.0f;
-    }
-    return value;
+        float value = 0.0f;
+        if (memcpy_s(&value, sizeof(float), ptr, sizeof(float)) != 0) {
+            return 0.0f;
+        }
+        return value;
     }
 
-    std::string ExtractString(size_t maxLen = DEFAULT_STRING_LENGTH)
-    {
+    std::string ExtractString(size_t maxLen = DEFAULT_STRING_LENGTH) {
         if (maxLen == 0 || maxLen > MAX_STRING_LENGTH) {
             maxLen = MAX_STRING_LENGTH;
         }
@@ -359,8 +345,7 @@ public:
         return "";
     }
 
-    std::string ExtractStringWithLen(size_t len, size_t maxLen = DEFAULT_STRING_LENGTH)
-    {
+    std::string ExtractStringWithLen(size_t len, size_t maxLen = DEFAULT_STRING_LENGTH) {
         if (len > maxLen) {
             len = maxLen;
         }
@@ -377,8 +362,7 @@ public:
         return std::string(reinterpret_cast<const char*>(ptr), len);
     }
 
-    std::vector<int32_t> ExtractInt32Vector(size_t maxElements = DEFAULT_VECTOR_SIZE)
-    {
+    std::vector<int32_t> ExtractInt32Vector(size_t maxElements = DEFAULT_VECTOR_SIZE) {
         std::vector<int32_t> result;
         if (maxElements == 0 || maxElements > MAX_VECTOR_SIZE) {
             maxElements = MAX_VECTOR_SIZE;
@@ -405,8 +389,7 @@ public:
         return result;
     }
 
-    std::vector<int64_t> ExtractInt64Vector(size_t maxElements = DEFAULT_VECTOR_SIZE)
-    {
+    std::vector<int64_t> ExtractInt64Vector(size_t maxElements = DEFAULT_VECTOR_SIZE) {
         std::vector<int64_t> result;
         if (maxElements == 0 || maxElements > MAX_VECTOR_SIZE) {
             maxElements = MAX_VECTOR_SIZE;
@@ -433,8 +416,7 @@ public:
         return result;
     }
 
-    std::vector<std::string> ExtractStringVector(size_t maxStrings = 5, size_t maxLen = 100)
-    {
+    std::vector<std::string> ExtractStringVector(size_t maxStrings = 5, size_t maxLen = 100) {
         std::vector<std::string> result;
         if (maxStrings == 0) {
             return result;
@@ -445,28 +427,23 @@ public:
         return result;
     }
 
-    bool HasMore() const
-    {
+    bool HasMore() const {
         return offset_ < size_;
     }
 
-    size_t Remaining() const
-    {
+    size_t Remaining() const {
         return size_ - offset_;
     }
 
-    void Reset()
-    {
+    void Reset() {
         offset_ = 0;
     }
 
-    size_t GetOffset() const
-    {
+    size_t GetOffset() const {
         return offset_;
     }
 
-    size_t GetSize() const
-    {
+    size_t GetSize() const {
         return size_;
     }
 
@@ -475,14 +452,12 @@ public:
     DataExtractor(DataExtractor&&) = delete;
     DataExtractor& operator=(DataExtractor&&) = delete;
 
-private:
-    bool CanExtract(size_t size) const
-    {
+   private:
+    bool CanExtract(size_t size) const {
         return offset_ + size <= size_;
     }
 
-    const uint8_t* SafeRead(size_t size)
-    {
+    const uint8_t* SafeRead(size_t size) {
         if (!CanExtract(size)) {
             return nullptr;
         }
@@ -496,7 +471,7 @@ private:
     size_t offset_;
 };
 
-} // namespace FuzzUtils
+}  // namespace FuzzUtils
 
 using namespace FuzzUtils;
 using namespace OHOS::SOCPERF;
@@ -514,8 +489,7 @@ static std::atomic<uint32_t> g_errorCounter(0);
 // Test Helper Functions
 // ============================================================================
 
-bool InitializeSystem()
-{
+bool InitializeSystem() {
     std::lock_guard<std::mutex> lock(g_fuzzMutex);
     if (g_systemInitialized) {
         return true;
@@ -529,8 +503,7 @@ bool InitializeSystem()
     return false;
 }
 
-SocPerfClient& GetSocPerfClient()
-{
+SocPerfClient& GetSocPerfClient() {
     return SocPerfClient::GetInstance();
 }
 
@@ -538,8 +511,7 @@ SocPerfClient& GetSocPerfClient()
 // Test Case Implementations
 // ============================================================================
 
-void TestCaseInit(DataExtractor& extractor)
-{
+void TestCaseInit(DataExtractor& extractor) {
     (void)extractor;
     g_systemInitialized = false;
     InitializeSystem();
@@ -554,8 +526,7 @@ void TestCaseInit(DataExtractor& extractor)
     (void)client3;
 }
 
-void TestCasePerfRequest(DataExtractor& extractor)
-{
+void TestCasePerfRequest(DataExtractor& extractor) {
     SocPerfClient& client = GetSocPerfClient();
 
     int32_t cmdId = extractor.ExtractInt32();
@@ -587,8 +558,7 @@ void TestCasePerfRequest(DataExtractor& extractor)
     }
 }
 
-void TestCasePerfRequestEx(DataExtractor& extractor)
-{
+void TestCasePerfRequestEx(DataExtractor& extractor) {
     SocPerfClient& client = GetSocPerfClient();
 
     int32_t cmdId = extractor.ExtractInt32();
@@ -613,8 +583,7 @@ void TestCasePerfRequestEx(DataExtractor& extractor)
     }
 }
 
-void TestCasePowerLimitBoost(DataExtractor& extractor)
-{
+void TestCasePowerLimitBoost(DataExtractor& extractor) {
     SocPerfClient& client = GetSocPerfClient();
 
     bool onOffTag = extractor.ExtractBool();
@@ -638,8 +607,7 @@ void TestCasePowerLimitBoost(DataExtractor& extractor)
     client.PowerLimitBoost(onOffTag, std::string(STRING_LEN_XLARGE, 'P'));
 }
 
-void TestCaseThermalLimitBoost(DataExtractor& extractor)
-{
+void TestCaseThermalLimitBoost(DataExtractor& extractor) {
     SocPerfClient& client = GetSocPerfClient();
 
     bool onOffTag = extractor.ExtractBool();
@@ -662,8 +630,7 @@ void TestCaseThermalLimitBoost(DataExtractor& extractor)
     client.ThermalLimitBoost(onOffTag, std::string(STRING_LEN_XXLARGE, 't'));
 }
 
-void TestCaseLimitRequest(DataExtractor& extractor)
-{
+void TestCaseLimitRequest(DataExtractor& extractor) {
     SocPerfClient& client = GetSocPerfClient();
 
     int32_t clientId = extractor.ExtractInt32();
@@ -686,25 +653,24 @@ void TestCaseLimitRequest(DataExtractor& extractor)
     std::vector<int64_t> emptyConfigs;
     client.LimitRequest(clientId, emptyTags, emptyConfigs, "empty_arrays");
 
-    std::vector<int32_t> singleTag = { 1 };
-    std::vector<int64_t> singleConfig = { 100 };
+    std::vector<int32_t> singleTag = {1};
+    std::vector<int64_t> singleConfig = {100};
     client.LimitRequest(clientId, singleTag, singleConfig, "single_element");
 
-    std::vector<int32_t> moreTags = { 1, 2, 3 };
-    std::vector<int64_t> fewerConfigs = { CONFIG_VALUE_SMALL };
+    std::vector<int32_t> moreTags = {1, 2, 3};
+    std::vector<int64_t> fewerConfigs = {CONFIG_VALUE_SMALL};
     client.LimitRequest(clientId, moreTags, fewerConfigs, "mismatched");
 
     std::vector<int32_t> largeTags(MAX_VECTOR_SIZE, 1);
     std::vector<int64_t> largeConfigs(MAX_VECTOR_SIZE, CONFIG_VALUE_LARGE);
     client.LimitRequest(clientId, largeTags, largeConfigs, "large_arrays");
 
-    std::vector<int32_t> resTags = { RES_ID_CPU, RES_ID_GPU, RES_ID_DDR, RES_ID_NPU };
-    std::vector<int64_t> resConfigs = { CONFIG_VALUE_LARGE, RES_CONFIG_GPU, RES_CONFIG_DDR, RES_CONFIG_NPU };
+    std::vector<int32_t> resTags = {RES_ID_CPU, RES_ID_GPU, RES_ID_DDR, RES_ID_NPU};
+    std::vector<int64_t> resConfigs = {CONFIG_VALUE_LARGE, RES_CONFIG_GPU, RES_CONFIG_DDR, RES_CONFIG_NPU};
     client.LimitRequest(clientId, resTags, resConfigs, "resource_tags");
 }
 
-void TestCaseSetRequestStatus(DataExtractor& extractor)
-{
+void TestCaseSetRequestStatus(DataExtractor& extractor) {
     SocPerfClient& client = GetSocPerfClient();
 
     bool status = extractor.ExtractBool();
@@ -727,8 +693,7 @@ void TestCaseSetRequestStatus(DataExtractor& extractor)
     client.SetRequestStatus(status, std::string(STRING_LEN_XXLARGE, 's'));
 }
 
-void TestCaseSetThermalLevel(DataExtractor& extractor)
-{
+void TestCaseSetThermalLevel(DataExtractor& extractor) {
     SocPerfClient& client = GetSocPerfClient();
 
     int32_t level = extractor.ExtractInt32();
@@ -758,8 +723,7 @@ void TestCaseSetThermalLevel(DataExtractor& extractor)
     }
 }
 
-void TestCaseRequestDeviceMode(DataExtractor& extractor)
-{
+void TestCaseRequestDeviceMode(DataExtractor& extractor) {
     SocPerfClient& client = GetSocPerfClient();
 
     std::string mode = extractor.ExtractString(STRING_LEN_MEDIUM);
@@ -793,14 +757,13 @@ void TestCaseRequestDeviceMode(DataExtractor& extractor)
     client.RequestDeviceMode("mode.with.dot", status);
     client.RequestDeviceMode("mode@with@at", status);
 
-    std::string modes[] = { "game", "video", "camera", "performance" };
+    std::string modes[] = {"game", "video", "camera", "performance"};
     for (int32_t i = 0; i < STRESS_ITERATIONS; i++) {
         client.RequestDeviceMode(modes[i % MODE_INDEX_MOD], i % TOGGLE_MOD == TOGGLE_EVEN);
     }
 }
 
-void TestCaseRequestCmdIdCount(DataExtractor& extractor)
-{
+void TestCaseRequestCmdIdCount(DataExtractor& extractor) {
     SocPerfClient& client = GetSocPerfClient();
 
     std::string msg = extractor.ExtractString(DEFAULT_STRING_LENGTH);
@@ -820,8 +783,7 @@ void TestCaseRequestCmdIdCount(DataExtractor& extractor)
     result = client.RequestCmdIdCount("after_state_change");
 }
 
-void TestCaseResetClient(DataExtractor& extractor)
-{
+void TestCaseResetClient(DataExtractor& extractor) {
     (void)extractor;
     SocPerfClient& client = GetSocPerfClient();
 
@@ -843,8 +805,7 @@ void TestCaseResetClient(DataExtractor& extractor)
     }
 }
 
-void TestCaseConfigIsValidResId(DataExtractor& extractor)
-{
+void TestCaseConfigIsValidResId(DataExtractor& extractor) {
     auto& config = SocPerfConfig::GetInstance();
 
     int32_t resId = extractor.ExtractInt32();
@@ -870,8 +831,7 @@ void TestCaseConfigIsValidResId(DataExtractor& extractor)
     }
 }
 
-void TestCaseConfigIsGovResId(DataExtractor& extractor)
-{
+void TestCaseConfigIsGovResId(DataExtractor& extractor) {
     auto& config = SocPerfConfig::GetInstance();
 
     int32_t resId = extractor.ExtractInt32();
@@ -895,15 +855,14 @@ void TestCaseConfigIsGovResId(DataExtractor& extractor)
 }
 
 // Helper function to handle combined sequence operations (reduces complexity)
-void HandleCombinedSequenceOp(SocPerfClient& client, uint8_t op, DataExtractor& extractor)
-{
+void HandleCombinedSequenceOp(SocPerfClient& client, uint8_t op, DataExtractor& extractor) {
     switch (op) {
         case COMBINED_OP_PERF_REQUEST:
             client.PerfRequest(extractor.ExtractInt32(), extractor.ExtractString(STRING_LEN_MEDIUM));
             break;
         case COMBINED_OP_PERF_REQUEST_EX:
             client.PerfRequestEx(extractor.ExtractInt32(),
-                extractor.ExtractBool(), extractor.ExtractString(STRING_LEN_MEDIUM));
+                                 extractor.ExtractBool(), extractor.ExtractString(STRING_LEN_MEDIUM));
             break;
         case COMBINED_OP_POWER_LIMIT_BOOST:
             client.PowerLimitBoost(extractor.ExtractBool(), extractor.ExtractString(STRING_LEN_MEDIUM));
@@ -913,9 +872,9 @@ void HandleCombinedSequenceOp(SocPerfClient& client, uint8_t op, DataExtractor& 
             break;
         case COMBINED_OP_LIMIT_REQUEST:
             client.LimitRequest(extractor.ExtractInt32(),
-                extractor.ExtractInt32Vector(DEFAULT_VECTOR_SIZE),
-                extractor.ExtractInt64Vector(DEFAULT_VECTOR_SIZE),
-                extractor.ExtractString(STRING_LEN_MEDIUM));
+                                extractor.ExtractInt32Vector(DEFAULT_VECTOR_SIZE),
+                                extractor.ExtractInt64Vector(DEFAULT_VECTOR_SIZE),
+                                extractor.ExtractString(STRING_LEN_MEDIUM));
             break;
         case COMBINED_OP_SET_REQUEST_STATUS:
             client.SetRequestStatus(extractor.ExtractBool(), extractor.ExtractString(STRING_LEN_MEDIUM));
@@ -943,8 +902,7 @@ void HandleCombinedSequenceOp(SocPerfClient& client, uint8_t op, DataExtractor& 
     }
 }
 
-void TestCaseCombinedSequence(DataExtractor& extractor)
-{
+void TestCaseCombinedSequence(DataExtractor& extractor) {
     SocPerfClient& client = GetSocPerfClient();
 
     uint8_t sequenceLength = extractor.ExtractUInt8() % COMBINED_SEQ_MOD + COMBINED_SEQ_MIN_LENGTH;
@@ -956,8 +914,7 @@ void TestCaseCombinedSequence(DataExtractor& extractor)
     }
 }
 
-void TestCaseBoundaryValues(DataExtractor& extractor)
-{
+void TestCaseBoundaryValues(DataExtractor& extractor) {
     (void)extractor;
     SocPerfClient& client = GetSocPerfClient();
 
@@ -986,8 +943,8 @@ void TestCaseBoundaryValues(DataExtractor& extractor)
     std::vector<int64_t> emptyConfigs;
     client.LimitRequest(0, emptyTags, emptyConfigs, "empty");
 
-    std::vector<int32_t> singleTag = { 0 };
-    std::vector<int64_t> singleConfig = { 0 };
+    std::vector<int32_t> singleTag = {0};
+    std::vector<int64_t> singleConfig = {0};
     client.LimitRequest(0, singleTag, singleConfig, "single");
 
     std::vector<int32_t> maxTags(MAX_VECTOR_SIZE, 0);
@@ -1002,8 +959,7 @@ void TestCaseBoundaryValues(DataExtractor& extractor)
     g_callCounter++;
 }
 
-void TestCaseRaceSimulation(DataExtractor& extractor)
-{
+void TestCaseRaceSimulation(DataExtractor& extractor) {
     (void)extractor;
     SocPerfClient& client = GetSocPerfClient();
 
@@ -1018,7 +974,7 @@ void TestCaseRaceSimulation(DataExtractor& extractor)
 
         client.SetThermalLevel(i % THERMAL_LOOP_BOUND);
 
-        std::string modes[] = { "game", "video", "camera" };
+        std::string modes[] = {"game", "video", "camera"};
         client.RequestDeviceMode(modes[i % RACE_MODE_INDEX_MOD], true);
         client.RequestDeviceMode(modes[i % RACE_MODE_INDEX_MOD], false);
 
@@ -1030,14 +986,13 @@ void TestCaseRaceSimulation(DataExtractor& extractor)
     }
 
     for (int32_t i = 0; i < STRESS_LOOP_MEDIUM; i++) {
-        std::vector<int32_t> tags = { BOUNDARY_LOOP_START + i };
-        std::vector<int64_t> configs = { CONFIG_RACE_MULTIPLIER * i };
+        std::vector<int32_t> tags = {BOUNDARY_LOOP_START + i};
+        std::vector<int64_t> configs = {CONFIG_RACE_MULTIPLIER * i};
         client.LimitRequest(i % RACE_LIMIT_MOD, tags, configs, "race_limit");
     }
 }
 
-void TestCaseErrorPaths(DataExtractor& extractor)
-{
+void TestCaseErrorPaths(DataExtractor& extractor) {
     SocPerfClient& client = GetSocPerfClient();
 
     client.ResetClient();
@@ -1071,8 +1026,7 @@ void TestCaseErrorPaths(DataExtractor& extractor)
     g_callCounter++;
 }
 
-void TestCaseStringFuzzing(DataExtractor& extractor)
-{
+void TestCaseStringFuzzing(DataExtractor& extractor) {
     SocPerfClient& client = GetSocPerfClient();
 
     int32_t cmdId = extractor.ExtractInt32();
@@ -1095,8 +1049,8 @@ void TestCaseStringFuzzing(DataExtractor& extractor)
         client.RequestDeviceMode(str, true);
         client.RequestCmdIdCount(str);
 
-        std::vector<int32_t> tags = { 1 };
-        std::vector<int64_t> configs = { 100 };
+        std::vector<int32_t> tags = {1};
+        std::vector<int64_t> configs = {100};
         client.LimitRequest(0, tags, configs, str);
 
         g_callCounter++;
@@ -1127,8 +1081,7 @@ void TestCaseStringFuzzing(DataExtractor& extractor)
     }
 }
 
-void TestCaseVectorFuzzing(DataExtractor& extractor)
-{
+void TestCaseVectorFuzzing(DataExtractor& extractor) {
     SocPerfClient& client = GetSocPerfClient();
 
     size_t tagCount = extractor.ExtractUInt8() % (MAX_VECTOR_SIZE + 1);
@@ -1153,10 +1106,10 @@ void TestCaseVectorFuzzing(DataExtractor& extractor)
 
     std::vector<int32_t> sizes[] = {
         {},
-        { 1 },
-        { 1, 2 },
-        { 1, 2, 3, 4, 5 },
-        { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 },
+        {1},
+        {1, 2},
+        {1, 2, 3, 4, 5},
+        {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
     };
 
     for (const auto& sizeVec : sizes) {
@@ -1167,21 +1120,18 @@ void TestCaseVectorFuzzing(DataExtractor& extractor)
 
     std::vector<int32_t> extremeTags = {
         0, 1, -1, INT32_MAX, INT32_MIN,
-        1000, 2000, 3000, 4000, 5000, 5999
-    };
+        1000, 2000, 3000, 4000, 5000, 5999};
     std::vector<int64_t> extremeConfigs = {
         0, 1, -1, INT64_MAX, INT64_MIN,
         100, 200, 300, 400, 500,
-        0x7FFFFFFFFFFFFFFF, 0x8000000000000000
-    };
+        0x7FFFFFFFFFFFFFFF, 0x8000000000000000};
 
     client.LimitRequest(clientId, extremeTags, extremeConfigs, "extreme_values");
     g_callCounter++;
 }
 
 // Helper function to handle state machine transition
-void HandleStateTransition(SocPerfClient& client, uint8_t transition, uint8_t i)
-{
+void HandleStateTransition(SocPerfClient& client, uint8_t transition, uint8_t i) {
     switch (transition) {
         case TRANSITION_ENABLE_STATUS:
             client.SetRequestStatus(true, "transition_enable");
@@ -1202,7 +1152,7 @@ void HandleStateTransition(SocPerfClient& client, uint8_t transition, uint8_t i)
             client.ThermalLimitBoost(i % TOGGLE_MOD == TOGGLE_EVEN, "transition_thermal");
             break;
         case TRANSITION_DEVICE_MODE: {
-            std::string modes[] = { "game", "video", "camera", "normal" };
+            std::string modes[] = {"game", "video", "camera", "normal"};
             client.RequestDeviceMode(modes[i % MODE_INDEX_MOD], i % TOGGLE_MOD == TOGGLE_EVEN);
             break;
         }
@@ -1214,8 +1164,7 @@ void HandleStateTransition(SocPerfClient& client, uint8_t transition, uint8_t i)
     }
 }
 
-void TestCaseStateMachine(DataExtractor& extractor)
-{
+void TestCaseStateMachine(DataExtractor& extractor) {
     SocPerfClient& client = GetSocPerfClient();
 
     bool initialStatus = extractor.ExtractBool();
@@ -1244,7 +1193,7 @@ void TestCaseStateMachine(DataExtractor& extractor)
 
 using IntegrationTestCaseFunc = void (*)(DataExtractor&);
 
-static const IntegrationTestCaseFunc g_integrationTestFuncs[TEST_CASE_COUNT] = {
+static const IntegrationTestCaseFunc INTEGRATION_TEST_FUNCS[TEST_CASE_COUNT] = {
     TestCaseInit,
     TestCasePerfRequest,
     TestCasePerfRequestEx,
@@ -1268,10 +1217,9 @@ static const IntegrationTestCaseFunc g_integrationTestFuncs[TEST_CASE_COUNT] = {
 };
 
 // Helper function to dispatch test case
-void DispatchTestCase(uint8_t testCase, DataExtractor& extractor)
-{
+void DispatchTestCase(uint8_t testCase, DataExtractor& extractor) {
     if (testCase < TEST_CASE_COUNT) {
-        g_integrationTestFuncs[testCase](extractor);
+        INTEGRATION_TEST_FUNCS[testCase](extractor);
     }
 }
 
@@ -1279,8 +1227,7 @@ void DispatchTestCase(uint8_t testCase, DataExtractor& extractor)
 // Main Fuzz Entry Point
 // ============================================================================
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
-{
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     if (data == nullptr || size < MIN_INPUT_SIZE) {
         return 0;
     }
