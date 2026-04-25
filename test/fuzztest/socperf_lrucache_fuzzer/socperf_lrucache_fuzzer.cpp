@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 OpenAtom Foundation
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,16 +16,6 @@
 /**
  * @file socperf_lrucache_fuzzer.cpp
  * @brief Comprehensive fuzzing driver for SocPerfLRUCache
- *
- * Coverage targets:
- * - Basic get/put operations
- * - Capacity limits and eviction
- * - Cache size variations
- * - Key patterns (sequential, random, duplicate, hot)
- * - Value patterns and edge cases
- * - Template instantiation with various types
- * - Concurrent access simulation
- * - Boundary conditions and error handling
  */
 
 #include <cstdint>
@@ -58,7 +48,7 @@ constexpr int32_t MAX_CAPACITY = 256;
 constexpr int32_t MIN_CAPACITY = 1;
 constexpr int32_t DEFAULT_CAPACITY = 16;
 
-// Iteration count constants
+// Iteration count constants (G.CNS.02)
 constexpr int32_t SMALL_ITERATION_COUNT = 10;
 constexpr int32_t MEDIUM_ITERATION_COUNT = 50;
 constexpr int32_t LARGE_ITERATION_COUNT = 100;
@@ -72,6 +62,23 @@ constexpr int32_t EXTRA_LARGE_CACHE_ITEMS = 500;
 // String length constraints
 constexpr size_t MAX_STRING_LENGTH = 32;
 constexpr size_t MAX_STRING_VALUE_LENGTH = 256;
+
+// Key pattern constants (G.CNS.02)
+constexpr int32_t HOT_KEY_BASE_1 = 10;
+constexpr int32_t HOT_KEY_BASE_2 = 20;
+constexpr int32_t HOT_KEY_BASE_3 = 30;
+constexpr int32_t EVICTION_START_KEY = 1000;
+constexpr int32_t EVICTION_END_KEY = 1200;
+constexpr int32_t SPECIAL_KEY_VALUE = 42;
+constexpr int32_t PATTERN_HASH_MOD = 17;
+constexpr int32_t PATTERN_MULTIPLIER = 31;
+constexpr int32_t STRESS_ITER_DIV = 20;
+
+// Large operation constants
+constexpr size_t LARGE_OPS_BASE = 500;
+constexpr size_t LARGE_OPS_MOD = 1000;
+constexpr size_t STRESS_OPS_BASE = 1000;
+constexpr size_t STRESS_OPS_MOD = 5000;
 
 // Test case selectors
 constexpr uint8_t TEST_CASE_BASIC_PUT_GET = 0;
@@ -93,7 +100,7 @@ constexpr uint8_t TEST_CASE_HOT_KEY_ACCESS = 15;
 constexpr uint8_t TEST_CASE_COUNT = 16;
 
 // ============================================================================
-// DataExtractor Class (G.EXP.09: Variables declared when needed)
+// DataExtractor Class
 // ============================================================================
 
 class DataExtractor {
@@ -110,7 +117,7 @@ public:
             return 0;
         }
         int32_t value = 0;
-        memcpy(&value, ptr, sizeof(int32_t));
+        (void)memcpy_s(&value, sizeof(int32_t), ptr, sizeof(int32_t));
         return value;
     }
 
@@ -121,7 +128,7 @@ public:
             return 0;
         }
         uint32_t value = 0;
-        memcpy(&value, ptr, sizeof(uint32_t));
+        (void)memcpy_s(&value, sizeof(uint32_t), ptr, sizeof(uint32_t));
         return value;
     }
 
@@ -132,7 +139,7 @@ public:
             return 0;
         }
         size_t value = 0;
-        memcpy(&value, ptr, sizeof(size_t));
+        (void)memcpy_s(&value, sizeof(size_t), ptr, sizeof(size_t));
         return value;
     }
 
@@ -209,12 +216,9 @@ private:
 using namespace FuzzUtils;
 
 // ============================================================================
-// Test Helper Templates (G.EXP.09: Variables declared when used)
+// Test Helper Templates
 // ============================================================================
 
-/**
- * @brief Test basic put and get operations
- */
 template<typename K, typename V>
 void TestBasicPutGet(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
 {
@@ -231,9 +235,6 @@ void TestBasicPutGet(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor&
     }
 }
 
-/**
- * @brief Test cache eviction behavior
- */
 template<typename K, typename V>
 void TestEviction(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, size_t capacity, DataExtractor& extractor)
 {
@@ -257,9 +258,6 @@ void TestEviction(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, size_t capacity, 
     (void)found;
 }
 
-/**
- * @brief Test updating existing keys
- */
 template<typename K, typename V>
 void TestUpdate(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
 {
@@ -286,9 +284,6 @@ void TestUpdate(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extr
     }
 }
 
-/**
- * @brief Test cache misses
- */
 template<typename K, typename V>
 void TestMiss(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
 {
@@ -300,8 +295,8 @@ void TestMiss(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extrac
         cache.put(key, value);
     }
 
-    // Try to get non-existent keys (starting from 100)
-    for (int32_t i = 100; i < 200; ++i) {
+    // Try to get non-existent keys
+    for (int32_t i = EVICTION_START_KEY; i < EVICTION_END_KEY; ++i) {
         K key = static_cast<K>(i);
         V retrievedValue;
         bool found = cache.get(key, retrievedValue);
@@ -309,9 +304,6 @@ void TestMiss(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extrac
     }
 }
 
-/**
- * @brief Test with various cache capacities
- */
 template<typename K, typename V>
 void TestCapacityChange(DataExtractor& extractor)
 {
@@ -327,9 +319,6 @@ void TestCapacityChange(DataExtractor& extractor)
     }
 }
 
-/**
- * @brief Test sequential keys
- */
 template<typename K, typename V>
 void TestSequentialKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
 {
@@ -349,9 +338,6 @@ void TestSequentialKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtract
     }
 }
 
-/**
- * @brief Test with random keys
- */
 template<typename K, typename V>
 void TestRandomKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
 {
@@ -368,9 +354,6 @@ void TestRandomKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& 
     }
 }
 
-/**
- * @brief Test with hot (frequently accessed) keys
- */
 template<typename K, typename V>
 void TestHotKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
 {
@@ -383,9 +366,9 @@ void TestHotKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& ext
     }
 
     // Define hot keys
-    K hotKey1 = static_cast<K>(10);
-    K hotKey2 = static_cast<K>(20);
-    K hotKey3 = static_cast<K>(30);
+    K hotKey1 = static_cast<K>(HOT_KEY_BASE_1);
+    K hotKey2 = static_cast<K>(HOT_KEY_BASE_2);
+    K hotKey3 = static_cast<K>(HOT_KEY_BASE_3);
 
     // Access some keys repeatedly (hot keys)
     for (int32_t i = 0; i < MEDIUM_ITERATION_COUNT; ++i) {
@@ -398,7 +381,7 @@ void TestHotKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& ext
     }
 
     // Fill cache to trigger eviction
-    for (int32_t i = 1000; i < 1200; ++i) {
+    for (int32_t i = EVICTION_START_KEY; i < EVICTION_END_KEY; ++i) {
         K key = static_cast<K>(i);
         V value = static_cast<V>(i);
         cache.put(key, value);
@@ -416,14 +399,11 @@ void TestHotKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& ext
     (void)found3;
 }
 
-/**
- * @brief Test with duplicate key operations
- */
 template<typename K, typename V>
 void TestDuplicateKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
 {
     (void)extractor;
-    K key = static_cast<K>(42);
+    K key = static_cast<K>(SPECIAL_KEY_VALUE);
     for (int32_t i = 0; i < LARGE_ITERATION_COUNT; ++i) {
         V value = static_cast<V>(i);
         cache.put(key, value);
@@ -434,9 +414,6 @@ void TestDuplicateKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtracto
     (void)found;
 }
 
-/**
- * @brief Test with boundary capacity values
- */
 template<typename K, typename V>
 void TestBoundaryCapacity(DataExtractor& extractor)
 {
@@ -451,7 +428,7 @@ void TestBoundaryCapacity(DataExtractor& extractor)
         }
     }
 
-    // Test with small capacity from fuzz data
+    // Test with small capacity
     {
         OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(MIN_CAPACITY + 1);
         for (int32_t i = 0; i < SMALL_ITERATION_COUNT * 2; ++i) {
@@ -482,9 +459,6 @@ void TestBoundaryCapacity(DataExtractor& extractor)
     }
 }
 
-/**
- * @brief Test mixed operations
- */
 template<typename K, typename V>
 void TestMixedOperations(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
 {
@@ -516,13 +490,10 @@ void TestMixedOperations(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtrac
     }
 }
 
-/**
- * @brief Test with large cache
- */
 template<typename K, typename V>
 void TestLargeCache(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
 {
-    size_t numOps = extractor.ExtractSizeT() % 1000 + 500;
+    size_t numOps = extractor.ExtractSizeT() % LARGE_OPS_MOD + LARGE_OPS_BASE;
 
     for (size_t i = 0; i < numOps; ++i) {
         K key = static_cast<K>(i);
@@ -537,9 +508,6 @@ void TestLargeCache(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& 
     }
 }
 
-/**
- * @brief Test with small cache
- */
 template<typename K, typename V>
 void TestSmallCache(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
 {
@@ -554,9 +522,6 @@ void TestSmallCache(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& 
     (void)cache.get(key, retrievedValue);
 }
 
-/**
- * @brief Test with various key patterns
- */
 template<typename K, typename V>
 void TestPatternFuzzing(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
 {
@@ -577,8 +542,8 @@ void TestPatternFuzzing(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtract
 
     // Pattern 3: Hash-like distribution
     for (int32_t i = 0; i < MEDIUM_ITERATION_COUNT; ++i) {
-        K key = static_cast<K>((i * 17) % 1000);
-        V value = static_cast<V>(i * 31);
+        K key = static_cast<K>((i * PATTERN_HASH_MOD) % 1000);
+        V value = static_cast<V>(i * PATTERN_MULTIPLIER);
         cache.put(key, value);
     }
 
@@ -590,13 +555,10 @@ void TestPatternFuzzing(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtract
     }
 }
 
-/**
- * @brief Stress test with intensive operations
- */
 template<typename K, typename V>
 void TestStressTest(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
 {
-    size_t numOps = extractor.ExtractSizeT() % 5000 + 1000;
+    size_t numOps = extractor.ExtractSizeT() % STRESS_OPS_MOD + STRESS_OPS_BASE;
 
     for (size_t i = 0; i < numOps; ++i) {
         uint8_t op = extractor.ExtractUInt8() % 4;
@@ -632,9 +594,6 @@ void TestStressTest(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& 
     }
 }
 
-/**
- * @brief Test hot key access patterns with eviction protection
- */
 template<typename K, typename V>
 void TestHotKeyAccess(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extractor)
 {
@@ -646,8 +605,8 @@ void TestHotKeyAccess(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor
         cache.put(key, value);
     }
 
-    // Access middle items to make them "hot" (using STRESS_ITERATION_COUNT for hot access)
-    for (int32_t i = 0; i < STRESS_ITERATION_COUNT / 20; ++i) {
+    // Access middle items to make them "hot"
+    for (int32_t i = 0; i < STRESS_ITERATION_COUNT / STRESS_ITER_DIV; ++i) {
         for (int32_t j = DEFAULT_CAPACITY / 4; j < DEFAULT_CAPACITY * 3 / 4; ++j) {
             K key = static_cast<K>(j);
             V retrievedValue;
@@ -671,26 +630,9 @@ void TestHotKeyAccess(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor
     }
 }
 
-// ============================================================================
-// Main Fuzz Entry Point
-// ============================================================================
-
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+// Helper function to dispatch test case (reduces cyclomatic complexity)
+void DispatchTestCase(uint8_t testCase, DataExtractor& extractor, size_t capacity)
 {
-    if (data == nullptr || size < MIN_FUZZ_INPUT_SIZE) {
-        return 0;
-    }
-
-    if (size > MAX_FUZZ_INPUT_SIZE) {
-        return 0;
-    }
-
-    DataExtractor extractor(data, size);
-
-    uint8_t testCase = extractor.ExtractUInt8() % TEST_CASE_COUNT;
-
-    size_t capacity = extractor.ExtractSizeT() % MAX_CAPACITY + MIN_CAPACITY;
-
     switch (testCase) {
         case TEST_CASE_BASIC_PUT_GET: {
             OHOS::SOCPERF::SocPerfLRUCache<int32_t, int32_t> cache(capacity);
@@ -773,6 +715,29 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
         default:
             break;
     }
+}
+
+// ============================================================================
+// Main Fuzz Entry Point
+// ============================================================================
+
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+{
+    if (data == nullptr || size < MIN_FUZZ_INPUT_SIZE) {
+        return 0;
+    }
+
+    if (size > MAX_FUZZ_INPUT_SIZE) {
+        return 0;
+    }
+
+    DataExtractor extractor(data, size);
+
+    uint8_t testCase = extractor.ExtractUInt8() % TEST_CASE_COUNT;
+
+    size_t capacity = extractor.ExtractSizeT() % MAX_CAPACITY + MIN_CAPACITY;
+
+    DispatchTestCase(testCase, extractor, capacity);
 
     // Also test with string keys for template coverage
     {
@@ -783,7 +748,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
         int32_t retrieved;
         (void)strCache.get(key, retrieved);
 
-        // Test with longer string values using MAX_STRING_VALUE_LENGTH
+        // Test with longer string values
         std::string longKey = std::string(MAX_STRING_VALUE_LENGTH, 'x');
         int32_t longValue = extractor.ExtractInt32();
         strCache.put(longKey, longValue);

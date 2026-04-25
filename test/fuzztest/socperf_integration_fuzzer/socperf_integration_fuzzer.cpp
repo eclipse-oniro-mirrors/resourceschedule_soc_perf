@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 OpenAtom Foundation
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,14 +16,6 @@
 /**
  * @file socperf_integration_fuzzer.cpp
  * @brief Comprehensive fuzzing driver for SocPerf module integration testing.
- *
- * Coverage targets:
- * - SocPerfClient API fuzzing (all 10 public APIs)
- * - SocPerfConfig validation APIs
- * - Boundary condition testing
- * - Race condition simulation
- * - Complex state transitions
- * - Error path coverage
  */
 
 #include <cstdint>
@@ -75,6 +67,8 @@ constexpr int32_t MAX_CLIENT_ID = 100;
 // Stress test iterations
 constexpr int32_t STRESS_ITERATIONS = 50;
 constexpr int32_t RAPID_CALL_COUNT = 100;
+constexpr int32_t STRESS_LOOP_MEDIUM = 20;
+constexpr int32_t STRESS_LOOP_LARGE = 50;
 
 // Test case selectors
 constexpr uint8_t TEST_CASE_INIT = 0;
@@ -121,6 +115,29 @@ constexpr int32_t RES_ID_GPU = 2000;
 constexpr int32_t RES_ID_DDR = 3000;
 constexpr int32_t RES_ID_NPU = 4000;
 
+// String length constants (G.CNS.02)
+constexpr size_t STRING_LEN_SMALL = 32;
+constexpr size_t STRING_LEN_MEDIUM = 64;
+constexpr size_t STRING_LEN_LARGE = 128;
+constexpr size_t STRING_LEN_XLARGE = 256;
+constexpr size_t STRING_LEN_XXLARGE = 512;
+
+// Loop boundary constants (G.CNS.02)
+constexpr int32_t BOUNDARY_LOOP_START = 1000;
+constexpr int32_t BOUNDARY_LOOP_END = 1100;
+constexpr int32_t BOUNDARY_RANGE_END = 6000;
+constexpr int32_t LOOP_STEP_SIZE = 100;
+constexpr int32_t THERMAL_LOOP_BOUND = 10;
+
+// Combined sequence constants
+constexpr uint8_t COMBINED_SEQ_MIN_LENGTH = 5;
+constexpr uint8_t COMBINED_SEQ_MOD = 20;
+constexpr uint8_t COMBINED_OP_MOD = 12;
+
+// Error test constants
+constexpr int32_t ERROR_TEST_VALUE_NEG = -999;
+constexpr int32_t ERROR_TEST_VALUE_POS = 99999;
+
 // ============================================================================
 // Inline Validation Functions
 // ============================================================================
@@ -141,7 +158,7 @@ inline bool CheckOffset(size_t offset, size_t size, size_t typeSize)
 }
 
 // ============================================================================
-// DataExtractor Class (G.EXP.09: Variables declared when needed)
+// DataExtractor Class
 // ============================================================================
 
 class DataExtractor {
@@ -167,7 +184,7 @@ public:
             return 0;
         }
         int8_t value = 0;
-        memcpy(&value, ptr, sizeof(int8_t));
+        (void)memcpy_s(&value, sizeof(int8_t), ptr, sizeof(int8_t));
         return value;
     }
 
@@ -178,7 +195,7 @@ public:
             return 0;
         }
         uint16_t value = 0;
-        memcpy(&value, ptr, sizeof(uint16_t));
+        (void)memcpy_s(&value, sizeof(uint16_t), ptr, sizeof(uint16_t));
         return value;
     }
 
@@ -189,7 +206,7 @@ public:
             return 0;
         }
         int16_t value = 0;
-        memcpy(&value, ptr, sizeof(int16_t));
+        (void)memcpy_s(&value, sizeof(int16_t), ptr, sizeof(int16_t));
         return value;
     }
 
@@ -200,7 +217,7 @@ public:
             return 0;
         }
         int32_t value = 0;
-        memcpy(&value, ptr, sizeof(int32_t));
+        (void)memcpy_s(&value, sizeof(int32_t), ptr, sizeof(int32_t));
         return value;
     }
 
@@ -211,7 +228,7 @@ public:
             return 0;
         }
         uint32_t value = 0;
-        memcpy(&value, ptr, sizeof(uint32_t));
+        (void)memcpy_s(&value, sizeof(uint32_t), ptr, sizeof(uint32_t));
         return value;
     }
 
@@ -222,7 +239,7 @@ public:
             return 0;
         }
         int64_t value = 0;
-        memcpy(&value, ptr, sizeof(int64_t));
+        (void)memcpy_s(&value, sizeof(int64_t), ptr, sizeof(int64_t));
         return value;
     }
 
@@ -233,7 +250,7 @@ public:
             return 0;
         }
         uint64_t value = 0;
-        memcpy(&value, ptr, sizeof(uint64_t));
+        (void)memcpy_s(&value, sizeof(uint64_t), ptr, sizeof(uint64_t));
         return value;
     }
 
@@ -253,7 +270,7 @@ public:
             return 0.0f;
         }
         float value = 0.0f;
-        memcpy(&value, ptr, sizeof(float));
+        (void)memcpy_s(&value, sizeof(float), ptr, sizeof(float));
         return value;
     }
 
@@ -499,8 +516,8 @@ void TestCasePerfRequest(DataExtractor& extractor)
     client.PerfRequest(cmdId, "");
     client.PerfRequest(cmdId, "a");
     client.PerfRequest(cmdId, "test");
-    client.PerfRequest(cmdId, std::string(1024, 'x'));
-    client.PerfRequest(cmdId, std::string(4096, 'y'));
+    client.PerfRequest(cmdId, std::string(STRING_LEN_XLARGE, 'x'));
+    client.PerfRequest(cmdId, std::string(STRING_LEN_XXLARGE, 'y'));
 
     for (int32_t i = 0; i < RAPID_CALL_COUNT; i++) {
         client.PerfRequest(cmdId + i, "rapid");
@@ -554,8 +571,8 @@ void TestCasePowerLimitBoost(DataExtractor& extractor)
 
     client.PowerLimitBoost(onOffTag, "");
     client.PowerLimitBoost(onOffTag, "short");
-    client.PowerLimitBoost(onOffTag, std::string(512, 'p'));
-    client.PowerLimitBoost(onOffTag, std::string(1024, 'P'));
+    client.PowerLimitBoost(onOffTag, std::string(STRING_LEN_XXLARGE, 'p'));
+    client.PowerLimitBoost(onOffTag, std::string(STRING_LEN_XLARGE, 'P'));
 }
 
 void TestCaseThermalLimitBoost(DataExtractor& extractor)
@@ -579,7 +596,7 @@ void TestCaseThermalLimitBoost(DataExtractor& extractor)
 
     client.ThermalLimitBoost(onOffTag, "");
     client.ThermalLimitBoost(onOffTag, "short_thermal");
-    client.ThermalLimitBoost(onOffTag, std::string(512, 't'));
+    client.ThermalLimitBoost(onOffTag, std::string(STRING_LEN_XXLARGE, 't'));
 }
 
 void TestCaseLimitRequest(DataExtractor& extractor)
@@ -644,7 +661,7 @@ void TestCaseSetRequestStatus(DataExtractor& extractor)
 
     client.SetRequestStatus(status, "");
     client.SetRequestStatus(status, "short");
-    client.SetRequestStatus(status, std::string(512, 's'));
+    client.SetRequestStatus(status, std::string(STRING_LEN_XXLARGE, 's'));
 }
 
 void TestCaseSetThermalLevel(DataExtractor& extractor)
@@ -670,10 +687,10 @@ void TestCaseSetThermalLevel(DataExtractor& extractor)
     client.SetThermalLevel(MAX_THERMAL_LEVEL);
     client.SetThermalLevel(-MAX_THERMAL_LEVEL);
 
-    for (int32_t i = 0; i <= 10; i++) {
+    for (int32_t i = 0; i <= THERMAL_LOOP_BOUND; i++) {
         client.SetThermalLevel(i);
     }
-    for (int32_t i = 10; i >= -10; i--) {
+    for (int32_t i = THERMAL_LOOP_BOUND; i >= -THERMAL_LOOP_BOUND; i--) {
         client.SetThermalLevel(i);
     }
 }
@@ -682,7 +699,7 @@ void TestCaseRequestDeviceMode(DataExtractor& extractor)
 {
     SocPerfClient& client = GetSocPerfClient();
 
-    std::string mode = extractor.ExtractString(64);
+    std::string mode = extractor.ExtractString(STRING_LEN_MEDIUM);
     bool status = extractor.ExtractBool();
 
     client.RequestDeviceMode(mode, status);
@@ -705,8 +722,8 @@ void TestCaseRequestDeviceMode(DataExtractor& extractor)
     client.RequestDeviceMode("a", status);
     client.RequestDeviceMode("ab", status);
 
-    client.RequestDeviceMode(std::string(128, 'm'), status);
-    client.RequestDeviceMode(std::string(256, 'M'), status);
+    client.RequestDeviceMode(std::string(STRING_LEN_LARGE, 'm'), status);
+    client.RequestDeviceMode(std::string(STRING_LEN_XLARGE, 'M'), status);
 
     client.RequestDeviceMode("mode_with_underscore", status);
     client.RequestDeviceMode("mode-with-dash", status);
@@ -732,12 +749,12 @@ void TestCaseRequestCmdIdCount(DataExtractor& extractor)
     result = client.RequestCmdIdCount("test");
     result = client.RequestCmdIdCount("query");
     result = client.RequestCmdIdCount("statistics");
-    result = client.RequestCmdIdCount(std::string(512, 'c'));
+    result = client.RequestCmdIdCount(std::string(STRING_LEN_XXLARGE, 'c'));
 
     client.PerfRequest(TEST_CMD_ID_BASE, "generate_count");
     client.PerfRequest(TEST_CMD_ID_BASE + 1, "generate_count_2");
     client.PerfRequest(TEST_CMD_ID_BASE + 2, "generate_count_3");
-    result = client.RequestCmdIdCount("after_activity");
+    result = client.RequestCmdIdCount("after_state_change");
 }
 
 void TestCaseResetClient(DataExtractor& extractor)
@@ -757,7 +774,7 @@ void TestCaseResetClient(DataExtractor& extractor)
     client.PerfRequest(TEST_CMD_ID_BASE + 1, "after_second_reset");
     client.SetThermalLevel(THERMAL_LEVEL_WARNING);
 
-    for (int32_t i = 0; i < 5; i++) {
+    for (int32_t i = 0; i < THERMAL_LOOP_BOUND; i++) {
         client.ResetClient();
         client.PerfRequest(TEST_CMD_ID_BASE + i, "rapid_reset");
     }
@@ -782,10 +799,10 @@ void TestCaseConfigIsValidResId(DataExtractor& extractor)
     config.IsValidResId(INT32_MAX);
     config.IsValidResId(INT32_MIN);
 
-    for (int32_t i = 1000; i <= 1100; i++) {
+    for (int32_t i = BOUNDARY_LOOP_START; i <= BOUNDARY_LOOP_END; i++) {
         config.IsValidResId(i);
     }
-    for (int32_t i = 5900; i <= 6000; i++) {
+    for (int32_t i = 5900; i <= BOUNDARY_RANGE_END; i++) {
         config.IsValidResId(i);
     }
 }
@@ -809,8 +826,57 @@ void TestCaseConfigIsGovResId(DataExtractor& extractor)
     config.IsGovResId(INT32_MAX);
     config.IsGovResId(INT32_MIN);
 
-    for (int32_t i = 0; i <= 5000; i += 100) {
+    for (int32_t i = 0; i <= FUZZ_MAX_RESOURCE_ID; i += LOOP_STEP_SIZE) {
         config.IsGovResId(i);
+    }
+}
+
+// Helper function to handle combined sequence operations (reduces complexity)
+void HandleCombinedSequenceOp(SocPerfClient& client, uint8_t op, DataExtractor& extractor)
+{
+    switch (op) {
+        case 0:
+            client.PerfRequest(extractor.ExtractInt32(), extractor.ExtractString(STRING_LEN_MEDIUM));
+            break;
+        case 1:
+            client.PerfRequestEx(extractor.ExtractInt32(),
+                extractor.ExtractBool(), extractor.ExtractString(STRING_LEN_MEDIUM));
+            break;
+        case 2:
+            client.PowerLimitBoost(extractor.ExtractBool(), extractor.ExtractString(STRING_LEN_MEDIUM));
+            break;
+        case 3:
+            client.ThermalLimitBoost(extractor.ExtractBool(), extractor.ExtractString(STRING_LEN_MEDIUM));
+            break;
+        case 4:
+            client.LimitRequest(extractor.ExtractInt32(),
+                extractor.ExtractInt32Vector(DEFAULT_VECTOR_SIZE),
+                extractor.ExtractInt64Vector(DEFAULT_VECTOR_SIZE),
+                extractor.ExtractString(STRING_LEN_MEDIUM));
+            break;
+        case 5:
+            client.SetRequestStatus(extractor.ExtractBool(), extractor.ExtractString(STRING_LEN_MEDIUM));
+            break;
+        case 6:
+            client.SetThermalLevel(extractor.ExtractInt32());
+            break;
+        case 7:
+            client.RequestDeviceMode(extractor.ExtractString(STRING_LEN_SMALL), extractor.ExtractBool());
+            break;
+        case 8:
+            client.RequestCmdIdCount(extractor.ExtractString(STRING_LEN_MEDIUM));
+            break;
+        case 9:
+            client.ResetClient();
+            break;
+        case 10:
+            SocPerfConfig::GetInstance().IsValidResId(extractor.ExtractInt32());
+            break;
+        case 11:
+            SocPerfConfig::GetInstance().IsGovResId(extractor.ExtractInt32());
+            break;
+        default:
+            break;
     }
 }
 
@@ -818,55 +884,11 @@ void TestCaseCombinedSequence(DataExtractor& extractor)
 {
     SocPerfClient& client = GetSocPerfClient();
 
-    uint8_t sequenceLength = extractor.ExtractUInt8() % 20 + 5;
+    uint8_t sequenceLength = extractor.ExtractUInt8() % COMBINED_SEQ_MOD + COMBINED_SEQ_MIN_LENGTH;
 
     for (uint8_t i = 0; i < sequenceLength && extractor.HasMore(); i++) {
-        uint8_t op = extractor.ExtractUInt8() % 12;
-
-        switch (op) {
-            case 0:
-                client.PerfRequest(extractor.ExtractInt32(), extractor.ExtractString(64));
-                break;
-            case 1:
-                client.PerfRequestEx(extractor.ExtractInt32(),
-                    extractor.ExtractBool(), extractor.ExtractString(64));
-                break;
-            case 2:
-                client.PowerLimitBoost(extractor.ExtractBool(), extractor.ExtractString(64));
-                break;
-            case 3:
-                client.ThermalLimitBoost(extractor.ExtractBool(), extractor.ExtractString(64));
-                break;
-            case 4:
-                client.LimitRequest(extractor.ExtractInt32(),
-                    extractor.ExtractInt32Vector(5),
-                    extractor.ExtractInt64Vector(5),
-                    extractor.ExtractString(64));
-                break;
-            case 5:
-                client.SetRequestStatus(extractor.ExtractBool(), extractor.ExtractString(64));
-                break;
-            case 6:
-                client.SetThermalLevel(extractor.ExtractInt32());
-                break;
-            case 7:
-                client.RequestDeviceMode(extractor.ExtractString(32), extractor.ExtractBool());
-                break;
-            case 8:
-                client.RequestCmdIdCount(extractor.ExtractString(64));
-                break;
-            case 9:
-                client.ResetClient();
-                break;
-            case 10:
-                SocPerfConfig::GetInstance().IsValidResId(extractor.ExtractInt32());
-                break;
-            case 11:
-                SocPerfConfig::GetInstance().IsGovResId(extractor.ExtractInt32());
-                break;
-            default:
-                break;
-        }
+        uint8_t op = extractor.ExtractUInt8() % COMBINED_OP_MOD;
+        HandleCombinedSequenceOp(client, op, extractor);
         g_callCounter++;
     }
 }
@@ -931,7 +953,7 @@ void TestCaseRaceSimulation(DataExtractor& extractor)
         client.ThermalLimitBoost(true, "race_thermal_on");
         client.ThermalLimitBoost(false, "race_thermal_off");
 
-        client.SetThermalLevel(i % 10);
+        client.SetThermalLevel(i % THERMAL_LOOP_BOUND);
 
         std::string modes[] = { "game", "video", "camera" };
         client.RequestDeviceMode(modes[i % 3], true);
@@ -944,8 +966,8 @@ void TestCaseRaceSimulation(DataExtractor& extractor)
         g_callCounter++;
     }
 
-    for (int32_t i = 0; i < 20; i++) {
-        std::vector<int32_t> tags = { 1000 + i };
+    for (int32_t i = 0; i < STRESS_LOOP_MEDIUM; i++) {
+        std::vector<int32_t> tags = { BOUNDARY_LOOP_START + i };
         std::vector<int64_t> configs = { 100 * i };
         client.LimitRequest(i % 5, tags, configs, "race_limit");
     }
@@ -957,10 +979,10 @@ void TestCaseErrorPaths(DataExtractor& extractor)
 
     client.ResetClient();
 
-    client.PerfRequest(-999, "after_reset");
-    client.PerfRequestEx(-999, true, "after_reset_ex");
+    client.PerfRequest(ERROR_TEST_VALUE_NEG, "after_reset");
+    client.PerfRequestEx(ERROR_TEST_VALUE_NEG, true, "after_reset_ex");
     client.LimitRequest(-1, {}, {}, "after_reset_limit");
-    client.SetThermalLevel(-999);
+    client.SetThermalLevel(ERROR_TEST_VALUE_NEG);
 
     client.SetRequestStatus(false, "disable_for_error_test");
     client.PerfRequest(1, "should_be_blocked");
@@ -970,15 +992,15 @@ void TestCaseErrorPaths(DataExtractor& extractor)
     client.SetRequestStatus(true, "re-enable");
     client.PerfRequest(1, "after_re-enable");
 
-    client.SetThermalLevel(99999);
-    client.SetThermalLevel(-99999);
+    client.SetThermalLevel(ERROR_TEST_VALUE_POS);
+    client.SetThermalLevel(-ERROR_TEST_VALUE_POS);
     client.SetThermalLevel(0);
 
     client.RequestCmdIdCount("before");
     client.PerfRequest(1, "between");
     client.RequestCmdIdCount("after");
 
-    for (int32_t i = 0; i < 10; i++) {
+    for (int32_t i = 0; i < THERMAL_LOOP_BOUND; i++) {
         client.SetRequestStatus(i % 2 == 0, "rapid_status");
         client.PerfRequest(i, "during_status_change");
     }
@@ -993,11 +1015,11 @@ void TestCaseStringFuzzing(DataExtractor& extractor)
     int32_t cmdId = extractor.ExtractInt32();
 
     std::vector<std::string> testStrings = {
-        extractor.ExtractString(32),
-        extractor.ExtractString(64),
-        extractor.ExtractString(128),
-        extractor.ExtractString(256),
-        extractor.ExtractString(512),
+        extractor.ExtractString(STRING_LEN_SMALL),
+        extractor.ExtractString(STRING_LEN_MEDIUM),
+        extractor.ExtractString(STRING_LEN_LARGE),
+        extractor.ExtractString(STRING_LEN_XLARGE),
+        extractor.ExtractString(STRING_LEN_XXLARGE),
         extractor.ExtractStringWithLen(extractor.Remaining()),
     };
 
@@ -1026,9 +1048,9 @@ void TestCaseStringFuzzing(DataExtractor& extractor)
         "\r\n",
         "\0",
         "\x00\x01\x02",
-        "中文测试",
-        "日本語テスト",
-        "한글테스트",
+        "Chinese test",
+        "Japanese test",
+        "Korean test",
         "<>\"'&",
         "%s%s%s",
         "$(ls)",
@@ -1060,7 +1082,7 @@ void TestCaseVectorFuzzing(DataExtractor& extractor)
         configs.push_back(extractor.ExtractInt64());
     }
 
-    std::string msg = extractor.ExtractString(128);
+    std::string msg = extractor.ExtractString(STRING_LEN_LARGE);
     int32_t clientId = extractor.ExtractInt32();
 
     client.LimitRequest(clientId, tags, configs, msg);
@@ -1094,12 +1116,47 @@ void TestCaseVectorFuzzing(DataExtractor& extractor)
     g_callCounter++;
 }
 
+// Helper function to handle state machine transition
+void HandleStateTransition(SocPerfClient& client, uint8_t transition, uint8_t i)
+{
+    switch (transition) {
+        case 0:
+            client.SetRequestStatus(true, "transition_enable");
+            break;
+        case 1:
+            client.SetRequestStatus(false, "transition_disable");
+            break;
+        case 2:
+            client.SetThermalLevel((i % THERMAL_LOOP_BOUND) + 1);
+            break;
+        case 3:
+            client.SetThermalLevel(std::max(0, (i % THERMAL_LOOP_BOUND) - 5));
+            break;
+        case 4:
+            client.PowerLimitBoost(i % 2 == 0, "transition_power");
+            break;
+        case 5:
+            client.ThermalLimitBoost(i % 2 == 0, "transition_thermal");
+            break;
+        case 6: {
+            std::string modes[] = { "game", "video", "camera", "normal" };
+            client.RequestDeviceMode(modes[i % 4], i % 2 == 0);
+            break;
+        }
+        case 7:
+            client.PerfRequest(TEST_CMD_ID_BASE + i, "transition_request");
+            break;
+        default:
+            break;
+    }
+}
+
 void TestCaseStateMachine(DataExtractor& extractor)
 {
     SocPerfClient& client = GetSocPerfClient();
 
     bool initialStatus = extractor.ExtractBool();
-    int32_t initialLevel = extractor.ExtractInt32() % 10;
+    int32_t initialLevel = extractor.ExtractInt32() % THERMAL_LOOP_BOUND;
 
     client.SetRequestStatus(initialStatus, "initial_state");
     client.SetThermalLevel(initialLevel);
@@ -1108,35 +1165,7 @@ void TestCaseStateMachine(DataExtractor& extractor)
 
     for (uint8_t i = 0; i < numTransitions && extractor.HasMore(); i++) {
         uint8_t transition = extractor.ExtractUInt8() % 8;
-
-        switch (transition) {
-            case 0:
-                client.SetRequestStatus(true, "transition_enable");
-                break;
-            case 1:
-                client.SetRequestStatus(false, "transition_disable");
-                break;
-            case 2:
-                client.SetThermalLevel((i % 10) + 1);
-                break;
-            case 3:
-                client.SetThermalLevel(std::max(0, (i % 10) - 5));
-                break;
-            case 4:
-                client.PowerLimitBoost(i % 2 == 0, "transition_power");
-                break;
-            case 5:
-                client.ThermalLimitBoost(i % 2 == 0, "transition_thermal");
-                break;
-            case 6: {
-                    std::string modes[] = { "game", "video", "camera", "normal" };
-                    client.RequestDeviceMode(modes[i % 4], i % 2 == 0);
-                }
-                break;
-            case 7:
-                client.PerfRequest(TEST_CMD_ID_BASE + i, "transition_request");
-                break;
-        }
+        HandleStateTransition(client, transition, i);
 
         if (i % 10 == 9) {
             client.ResetClient();
@@ -1150,27 +1179,10 @@ void TestCaseStateMachine(DataExtractor& extractor)
     client.SetThermalLevel(0);
 }
 
-// ============================================================================
-// Main Fuzz Entry Point
-// ============================================================================
-
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+// Helper function to dispatch test case
+void DispatchTestCase(uint8_t testCase, DataExtractor& extractor)
 {
-    if (data == nullptr || size < MIN_INPUT_SIZE) {
-        return 0;
-    }
-
-    if (size > MAX_INPUT_SIZE) {
-        return 0;
-    }
-
-    DataExtractor extractor(data, size);
-
-    if (!InitializeSystem()) {
-        return 0;
-    }
-
-    uint8_t testCase = extractor.ExtractUInt8() % TEST_CASE_COUNT;
+    SocPerfClient& client = GetSocPerfClient();
 
     switch (testCase) {
         case TEST_CASE_INIT:
@@ -1236,6 +1248,31 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
         default:
             break;
     }
+    (void)client;
+}
+
+// ============================================================================
+// Main Fuzz Entry Point
+// ============================================================================
+
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+{
+    if (data == nullptr || size < MIN_INPUT_SIZE) {
+        return 0;
+    }
+
+    if (size > MAX_INPUT_SIZE) {
+        return 0;
+    }
+
+    DataExtractor extractor(data, size);
+
+    if (!InitializeSystem()) {
+        return 0;
+    }
+
+    uint8_t testCase = extractor.ExtractUInt8() % TEST_CASE_COUNT;
+    DispatchTestCase(testCase, extractor);
 
     return 0;
 }
