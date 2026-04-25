@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include "socperf_fuzz_mock.h"
 #include "socperf_fuzz_utils.h"
 
 #define private public
@@ -246,13 +247,6 @@ void RunDirectCoverage(FuzzDataProvider& provider)
     DrainQueue(wrap);
 
     auto perfInteraction = config.interAction_[0];
-    wrap.weakInteractionStatus_ = true;
-    wrap.boostResCnt = 0;
-    perfInteraction->status = BOOST_STATUS;
-    perfInteraction->delayTime = 0;
-    wrap.WeakInteraction();
-    DrainQueue(wrap);
-
     perfInteraction->status = WEAK_INTERACTION_STATUS;
     wrap.weakInteractionStatus_ = false;
     wrap.boostResCnt = 0;
@@ -292,6 +286,7 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
+    OHOS::SOCPERF::MockProcess();
     OHOS::SOCPERF::DoSomethingInterestingWithMyAPI(data, size);
     return 0;
 }

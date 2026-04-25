@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include "socperf_fuzz_mock.h"
 #include "socperf_fuzz_utils.h"
 
 #define private public
@@ -222,6 +223,7 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
+    OHOS::SOCPERF::MockProcess();
     OHOS::SOCPERF::DoSomethingInterestingWithMyAPI(data, size);
     return 0;
 }
