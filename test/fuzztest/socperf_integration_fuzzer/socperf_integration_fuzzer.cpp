@@ -427,25 +427,17 @@ class DataExtractor {
         return result;
     }
 
-    bool HasMore() const {
-        return offset_ < size_;
-    }
+    bool HasMore() const { return offset_ < size_; }
 
-    size_t Remaining() const {
-        return size_ - offset_;
-    }
+    size_t Remaining() const { return size_ - offset_; }
 
     void Reset() {
         offset_ = 0;
     }
 
-    size_t GetOffset() const {
-        return offset_;
-    }
+    size_t GetOffset() const { return offset_; }
 
-    size_t GetSize() const {
-        return size_;
-    }
+    size_t GetSize() const { return size_; }
 
     DataExtractor(const DataExtractor&) = delete;
     DataExtractor& operator=(const DataExtractor&) = delete;

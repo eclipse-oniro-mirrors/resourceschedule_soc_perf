@@ -206,21 +206,15 @@ class DataExtractor {
         return "";
     }
 
-    bool HasMore() const {
-        return offset_ < size_;
-    }
+    bool HasMore() const { return offset_ < size_; }
 
-    size_t Remaining() const {
-        return size_ - offset_;
-    }
+    size_t Remaining() const { return size_ - offset_; }
 
     DataExtractor(const DataExtractor&) = delete;
     DataExtractor& operator=(const DataExtractor&) = delete;
 
    private:
-    bool CanExtract(size_t size) const {
-        return offset_ + size <= size_;
-    }
+    bool CanExtract(size_t size) const { return offset_ + size <= size_; }
 
     const uint8_t* SafeRead(size_t size) {
         if (!CanExtract(size)) {
