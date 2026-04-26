@@ -18,11 +18,11 @@
  * @brief Fuzzing driver for SocPerf configuration parsing and validation.
  */
 
-#include <securec.h>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <securec.h>
 
 #include <memory>
 #include <mutex>
@@ -126,12 +126,14 @@ constexpr int64_t MAX_DELAY_TIME_LARGE = 1000000;
 class DataExtractor {
    public:
     explicit DataExtractor(const uint8_t* data, size_t size)
-        : data_(data), size_(size), offset_(0) {
-    }
+        : data_(data), size_(size), offset_(0)
+        {
+        }
 
     ~DataExtractor() = default;
 
-    int32_t ExtractInt32() {
+    int32_t ExtractInt32()
+    {
         const uint8_t* ptr = SafeRead(sizeof(int32_t));
         if (ptr == nullptr) {
             return 0;
@@ -141,7 +143,8 @@ class DataExtractor {
         return value;
     }
 
-    int64_t ExtractInt64() {
+    int64_t ExtractInt64()
+    {
         const uint8_t* ptr = SafeRead(sizeof(int64_t));
         if (ptr == nullptr) {
             return 0;
@@ -151,7 +154,8 @@ class DataExtractor {
         return value;
     }
 
-    uint8_t ExtractUInt8() {
+    uint8_t ExtractUInt8()
+    {
         const uint8_t* ptr = SafeRead(sizeof(uint8_t));
         if (ptr == nullptr) {
             return 0;
@@ -159,7 +163,8 @@ class DataExtractor {
         return *ptr;
     }
 
-    bool ExtractBool() {
+    bool ExtractBool()
+    {
         const uint8_t* ptr = SafeRead(sizeof(uint8_t));
         if (ptr == nullptr) {
             return false;
@@ -167,7 +172,8 @@ class DataExtractor {
         return *ptr != 0;
     }
 
-    std::string ExtractString(size_t maxLen = DEFAULT_STRING_LENGTH) {
+    std::string ExtractString(size_t maxLen = DEFAULT_STRING_LENGTH)
+    {
         if (offset_ >= size_) {
             return "";
         }
@@ -182,7 +188,8 @@ class DataExtractor {
         return "";
     }
 
-    std::string ExtractStringWithLen(size_t maxLen = DEFAULT_STRING_LENGTH) {
+    std::string ExtractStringWithLen(size_t maxLen = DEFAULT_STRING_LENGTH)
+    {
         if (offset_ >= size_) {
             return "";
         }
@@ -194,7 +201,8 @@ class DataExtractor {
         return std::string(reinterpret_cast<const char*>(ptr), len);
     }
 
-    std::vector<int32_t> ExtractInt32Vector(size_t maxElements = DEFAULT_VECTOR_SIZE) {
+    std::vector<int32_t> ExtractInt32Vector(size_t maxElements = DEFAULT_VECTOR_SIZE)
+    {
         std::vector<int32_t> result;
         if (maxElements > MAX_VECTOR_SIZE) {
             maxElements = MAX_VECTOR_SIZE;
@@ -218,15 +226,18 @@ class DataExtractor {
         return result;
     }
 
-    bool HasMore() const {
+    bool HasMore() const
+    {
         return offset_ < size_;
     }
 
-    size_t Remaining() const {
+    size_t Remaining() const
+    {
         return size_ - offset_;
     }
 
-    size_t GetSize() const {
+    size_t GetSize() const
+    {
         return size_;
     }
 
@@ -234,11 +245,13 @@ class DataExtractor {
     DataExtractor& operator=(const DataExtractor&) = delete;
 
    private:
-    bool CanExtract(size_t size) const {
+    bool CanExtract(size_t size) const
+    {
         return offset_ + size <= size_;
     }
 
-    const uint8_t* SafeRead(size_t size) {
+    const uint8_t* SafeRead(size_t size)
+    {
         if (!CanExtract(size)) {
             return nullptr;
         }
@@ -268,7 +281,8 @@ static bool g_configInitialized = false;
 // XML Generation Helpers
 // ============================================================================
 
-std::string GenerateBasicConfigXml() {
+std::string GenerateBasicConfigXml()
+{
     return std::string(R"(<?xml version="1.0" encoding="utf-8"?>
 <Configs>
     <Info>
@@ -286,27 +300,33 @@ std::string GenerateBasicConfigXml() {
 </Configs>)";
 }
 
-std::string GenerateMalformedXmlEmpty() {
+std::string GenerateMalformedXmlEmpty()
+{
     return "<?xml version=\"1.0\"?>\n<Configs></Configs>";
 }
 
-std::string GenerateMalformedXmlMissingRoot() {
+std::string GenerateMalformedXmlMissingRoot()
+{
     return "<?xml version=\"1.0\"?>\n<Resource><res id=\"1000\"/></Resource>";
 }
 
-std::string GenerateMalformedXmlWrongRoot() {
+std::string GenerateMalformedXmlWrongRoot()
+{
     return "<?xml version=\"1.0\"?>\n<WrongRoot></WrongRoot>";
 }
 
-std::string GenerateMalformedXmlNoClose() {
+std::string GenerateMalformedXmlNoClose()
+{
     return "<?xml version=\"1.0\"?>\n<Configs><Resource>";
 }
 
-std::string GenerateMalformedXmlSpecialChars() {
+std::string GenerateMalformedXmlSpecialChars()
+{
     return "<?xml version=\"1.0\"?>\n<Configs><Info>&lt;&gt;&amp;&quot;&apos;</Info></Configs>";
 }
 
-std::string GenerateMalformedXmlBinary(size_t len) {
+std::string GenerateMalformedXmlBinary(size_t len)
+{
     std::string result = "<?xml version=\"1.0\"?>\n<Configs>";
     for (size_t i = 0; i < len && i < MAX_XML_ITEM_SIZE; i++) {
         result += static_cast<char>(0xFF);
@@ -315,7 +335,8 @@ std::string GenerateMalformedXmlBinary(size_t len) {
     return result;
 }
 
-std::string GenerateMalformedXmlVeryLong(size_t len) {
+std::string GenerateMalformedXmlVeryLong(size_t len)
+{
     std::string result = "<?xml version=\"1.0\"?>\n<Configs>";
     for (size_t i = 0; i < len && i < MAX_XML_ITEMS * MAX_XML_ITEM_SIZE; i++) {
         result += "<Item></Item>";
@@ -324,7 +345,8 @@ std::string GenerateMalformedXmlVeryLong(size_t len) {
     return result;
 }
 
-std::string GenerateMalformedXmlNestedDeep(size_t len) {
+std::string GenerateMalformedXmlNestedDeep(size_t len)
+{
     std::string result = "<?xml version=\"1.0\"?>\n";
     for (size_t i = 0; i < len && i < MAX_XML_DEPTH; i++) {
         result += "<Level" + std::to_string(i) + ">";
@@ -336,7 +358,8 @@ std::string GenerateMalformedXmlNestedDeep(size_t len) {
     return result;
 }
 
-std::string GenerateMalformedXmlNullBytes() {
+std::string GenerateMalformedXmlNullBytes()
+{
     std::string result = "<?xml version=\"1.0\"?>\n<Configs><Item>";
     result += '\0';
     result += "content";
@@ -345,7 +368,8 @@ std::string GenerateMalformedXmlNullBytes() {
     return result;
 }
 
-std::string GenerateMalformedXml(const std::string& pattern, size_t len) {
+std::string GenerateMalformedXml(const std::string& pattern, size_t len)
+{
     if (pattern == "empty") {
         return GenerateMalformedXmlEmpty();
     }
@@ -377,14 +401,16 @@ std::string GenerateMalformedXml(const std::string& pattern, size_t len) {
 }
 
 // Helper function to generate resource XML header
-void GenerateResourceXmlHeader(std::string& xml) {
+void GenerateResourceXmlHeader(std::string& xml)
+{
     xml += R"(<?xml version="1.0" encoding="utf-8"?>
 <Configs>
     <Resource>)";
 }
 
 // Helper function to generate single resource entry
-int32_t ValidateResourceId(int32_t resId) {
+int32_t ValidateResourceId(int32_t resId)
+{
     if (resId < 0) {
         resId = -resId;
     }
@@ -397,7 +423,8 @@ int32_t ValidateResourceId(int32_t resId) {
     return resId;
 }
 
-int32_t ValidatePairId(int32_t pairId) {
+int32_t ValidatePairId(int32_t pairId)
+{
     if (pairId < 0) {
         pairId = -pairId;
     }
@@ -407,7 +434,8 @@ int32_t ValidatePairId(int32_t pairId) {
     return pairId;
 }
 
-void GenerateResourceEntry(std::string& xml, DataExtractor& extractor) {
+void GenerateResourceEntry(std::string& xml, DataExtractor& extractor)
+{
     int32_t resId = ValidateResourceId(extractor.ExtractInt32());
 
     std::string name = extractor.ExtractString(MEDIUM_STRING_LENGTH);
@@ -441,13 +469,15 @@ void GenerateResourceEntry(std::string& xml, DataExtractor& extractor) {
     }
 }
 
-void GenerateResourceXmlFooter(std::string& xml) {
+void GenerateResourceXmlFooter(std::string& xml)
+{
     xml += R"(
     </Resource>
 </Configs>)";
 }
 
-std::string GenerateResourceXml(DataExtractor& extractor) {
+std::string GenerateResourceXml(DataExtractor& extractor)
+{
     std::string xml;
     GenerateResourceXmlHeader(xml);
 
@@ -462,7 +492,8 @@ std::string GenerateResourceXml(DataExtractor& extractor) {
 }
 
 // Helper function to generate boost config header
-void GenerateBoostConfigHeader(std::string& xml, const std::string& configMode) {
+void GenerateBoostConfigHeader(std::string& xml, const std::string& configMode)
+{
     char configHeader[BUFFER_SIZE_SMALL];
     int ret = snprintf_s(configHeader, sizeof(configHeader),
                          R"(
@@ -473,12 +504,14 @@ void GenerateBoostConfigHeader(std::string& xml, const std::string& configMode) 
     }
 }
 
-void GenerateBoostConfigFooter(std::string& xml) {
+void GenerateBoostConfigFooter(std::string& xml)
+{
     xml += "\n    </Config>";
 }
 
 // Helper function to generate single cmd entry
-void GenerateBoostCmdEntry(std::string& xml, DataExtractor& extractor) {
+void GenerateBoostCmdEntry(std::string& xml, DataExtractor& extractor)
+{
     int32_t cmdId = FUZZ_MIN_RESOURCE_ID + (extractor.ExtractInt32() % CMD_ID_RANGE_SIZE);
     std::string cmdName = extractor.ExtractString(MEDIUM_STRING_LENGTH);
     if (cmdName.empty()) {
@@ -506,7 +539,8 @@ void GenerateBoostCmdEntry(std::string& xml, DataExtractor& extractor) {
     }
 }
 
-std::string GenerateBoostXml(DataExtractor& extractor) {
+std::string GenerateBoostXml(DataExtractor& extractor)
+{
     std::string xml = R"(<?xml version="1.0" encoding="utf-8"?>
 <Configs>)";
 
@@ -535,7 +569,8 @@ std::string GenerateBoostXml(DataExtractor& extractor) {
 // Test Cases
 // ============================================================================
 
-void TestConfigInit(DataExtractor& extractor) {
+void TestConfigInit(DataExtractor& extractor)
+{
     (void)extractor;
     auto& config = SocPerfConfig::GetInstance();
 
@@ -549,7 +584,8 @@ void TestConfigInit(DataExtractor& extractor) {
     (void)instance2;
 }
 
-void TestConfigIsValidResId(DataExtractor& extractor) {
+void TestConfigIsValidResId(DataExtractor& extractor)
+{
     auto& config = SocPerfConfig::GetInstance();
 
     int32_t resId = extractor.ExtractInt32();
@@ -582,7 +618,8 @@ void TestConfigIsValidResId(DataExtractor& extractor) {
     }
 }
 
-void TestConfigIsGovResId(DataExtractor& extractor) {
+void TestConfigIsGovResId(DataExtractor& extractor)
+{
     auto& config = SocPerfConfig::GetInstance();
 
     int32_t resId = extractor.ExtractInt32();
@@ -609,7 +646,8 @@ void TestConfigIsGovResId(DataExtractor& extractor) {
     }
 }
 
-void TestConfigXmlParsing(DataExtractor& extractor) {
+void TestConfigXmlParsing(DataExtractor& extractor)
+{
     uint8_t patternType = extractor.ExtractUInt8() % 11;
     std::string patterns[] = {
         "empty", "missing_root", "wrong_root", "no_close",
@@ -635,7 +673,8 @@ void TestConfigXmlParsing(DataExtractor& extractor) {
     }
 }
 
-void TestConfigResourceValidation(DataExtractor& extractor) {
+void TestConfigResourceValidation(DataExtractor& extractor)
+{
     std::string resourceXml = GenerateResourceXml(extractor);
     std::string tempFile = "/tmp/fuzz_resource_" + std::to_string(extractor.ExtractInt32()) + ".xml";
 
@@ -661,7 +700,8 @@ void TestConfigResourceValidation(DataExtractor& extractor) {
     }
 }
 
-void TestConfigGovValidation(DataExtractor& extractor) {
+void TestConfigGovValidation(DataExtractor& extractor)
+{
     auto& config = SocPerfConfig::GetInstance();
 
     for (int32_t i = 0; i < FUZZ_LOOP_BOUND_LARGE; i++) {
@@ -683,7 +723,8 @@ void TestConfigGovValidation(DataExtractor& extractor) {
     }
 }
 
-void TestConfigSceneValidation(DataExtractor& extractor) {
+void TestConfigSceneValidation(DataExtractor& extractor)
+{
     (void)extractor;
     std::string sceneName = extractor.ExtractString(MEDIUM_STRING_LENGTH);
     int32_t persistMode = extractor.ExtractInt32() % 2;
@@ -699,7 +740,8 @@ void TestConfigSceneValidation(DataExtractor& extractor) {
     }
 }
 
-void TestConfigActionValidation(DataExtractor& extractor) {
+void TestConfigActionValidation(DataExtractor& extractor)
+{
     int32_t numPairs = extractor.ExtractInt32() % FUZZ_LOOP_BOUND_MEDIUM;
 
     std::vector<int64_t> actionVars;
@@ -717,7 +759,8 @@ void TestConfigActionValidation(DataExtractor& extractor) {
     minResult = Min(extractor.ExtractInt64(), extractor.ExtractInt64(), extractor.ExtractInt64());
 }
 
-void TestConfigInterAction(DataExtractor& extractor) {
+void TestConfigInterAction(DataExtractor& extractor)
+{
     int32_t cmdId = extractor.ExtractInt32();
     int32_t actionType = extractor.ExtractInt32() % ACTION_TYPE_MAX;
     int64_t delayTime = extractor.ExtractInt64() % MAX_DELAY_TIME_LARGE;
@@ -738,7 +781,8 @@ void TestConfigInterAction(DataExtractor& extractor) {
     }
 }
 
-void TestConfigBoundary(DataExtractor& extractor) {
+void TestConfigBoundary(DataExtractor& extractor)
+{
     (void)extractor;
     auto& config = SocPerfConfig::GetInstance();
 
@@ -769,7 +813,8 @@ void TestConfigBoundary(DataExtractor& extractor) {
     IsNumber("+123");
 }
 
-void TestConfigStringPatterns(DataExtractor& extractor) {
+void TestConfigStringPatterns(DataExtractor& extractor)
+{
     std::string patterns[] = {
         "",
         " ",
@@ -799,7 +844,8 @@ void TestConfigStringPatterns(DataExtractor& extractor) {
     }
 }
 
-void TestConfigXmlMalformed(DataExtractor& extractor) {
+void TestConfigXmlMalformed(DataExtractor& extractor)
+{
     size_t remaining = extractor.Remaining();
     std::string malformedXml = GenerateMalformedXml("binary", remaining);
     std::string tempFile = "/tmp/fuzz_malformed_" + std::to_string(extractor.ExtractInt32()) + ".xml";
@@ -812,7 +858,8 @@ void TestConfigXmlMalformed(DataExtractor& extractor) {
     }
 }
 
-void TestConfigXmlEmpty(DataExtractor& extractor) {
+void TestConfigXmlEmpty(DataExtractor& extractor)
+{
     (void)extractor;
     std::string emptyXml = "<?xml version=\"1.0\"?><Configs></Configs>";
     time_t currentTime = time(nullptr);
@@ -826,7 +873,8 @@ void TestConfigXmlEmpty(DataExtractor& extractor) {
     }
 }
 
-void TestConfigDuplicateCheck(DataExtractor& extractor) {
+void TestConfigDuplicateCheck(DataExtractor& extractor)
+{
     (void)extractor;
     auto& config = SocPerfConfig::GetInstance();
 
@@ -842,7 +890,8 @@ void TestConfigDuplicateCheck(DataExtractor& extractor) {
     }
 }
 
-void TestConfigRangeTest(DataExtractor& extractor) {
+void TestConfigRangeTest(DataExtractor& extractor)
+{
     auto& config = SocPerfConfig::GetInstance();
 
     for (int32_t id = FUZZ_MIN_RESOURCE_ID; id <= FUZZ_MAX_RESOURCE_ID; id += RANGE_TEST_STEP) {
@@ -869,7 +918,8 @@ void TestConfigRangeTest(DataExtractor& extractor) {
     }
 }
 
-void TestConfigHelperFunctions(DataExtractor& extractor) {
+void TestConfigHelperFunctions(DataExtractor& extractor)
+{
     std::string testStrings[] = {
         "a|b|c|d",
         "key1=value1|key2=value2",
@@ -936,7 +986,8 @@ static const TestCaseFunc TEST_CASE_FUNCS[TEST_CASE_COUNT] = {
 };
 
 // Helper function to dispatch test case (reduces cyclomatic complexity)
-void DispatchTestCase(uint8_t testCase, DataExtractor& extractor) {
+void DispatchTestCase(uint8_t testCase, DataExtractor& extractor)
+{
     if (testCase < TEST_CASE_COUNT) {
         TEST_CASE_FUNCS[testCase](extractor);
     }
@@ -946,7 +997,8 @@ void DispatchTestCase(uint8_t testCase, DataExtractor& extractor) {
 // Main Fuzz Entry Point
 // ============================================================================
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+{
     if (data == nullptr || size < MIN_INPUT_SIZE) {
         return 0;
     }
