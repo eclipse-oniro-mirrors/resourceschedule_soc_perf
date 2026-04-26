@@ -22,7 +22,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <securec.h>
 
 #include <memory>
 #include <mutex>
@@ -139,7 +138,7 @@ class DataExtractor {
             return 0;
         }
         int32_t value = 0;
-        (void)memcpy_s(&value, sizeof(int32_t), ptr, sizeof(int32_t));
+        (void)memcpy(&value, ptr, sizeof(int32_t));
         return value;
     }
 
@@ -150,7 +149,7 @@ class DataExtractor {
             return 0;
         }
         int64_t value = 0;
-        (void)memcpy_s(&value, sizeof(int64_t), ptr, sizeof(int64_t));
+        (void)memcpy(&value, ptr, sizeof(int64_t));
         return value;
     }
 

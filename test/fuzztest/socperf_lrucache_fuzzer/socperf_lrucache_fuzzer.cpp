@@ -21,7 +21,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <securec.h>
 
 #include <list>
 #include <memory>
@@ -155,7 +154,7 @@ class DataExtractor {
             return 0;
         }
         int32_t value = 0;
-        (void)memcpy_s(&value, sizeof(int32_t), ptr, sizeof(int32_t));
+        (void)memcpy(&value, ptr, sizeof(int32_t));
         return value;
     }
 
@@ -166,7 +165,7 @@ class DataExtractor {
             return 0;
         }
         uint32_t value = 0;
-        (void)memcpy_s(&value, sizeof(uint32_t), ptr, sizeof(uint32_t));
+        (void)memcpy(&value, ptr, sizeof(uint32_t));
         return value;
     }
 
@@ -177,7 +176,7 @@ class DataExtractor {
             return 0;
         }
         size_t value = 0;
-        (void)memcpy_s(&value, sizeof(size_t), ptr, sizeof(size_t));
+        (void)memcpy(&value, ptr, sizeof(size_t));
         return value;
     }
 

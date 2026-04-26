@@ -22,7 +22,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <securec.h>
 #include <functional>
 #include <list>
 #include <memory>
@@ -248,7 +247,7 @@ class DataExtractor {
             return 0;
         }
         int8_t value = 0;
-        (void)memcpy_s(&value, sizeof(int8_t), ptr, sizeof(int8_t));
+        (void)memcpy(&value, ptr, sizeof(int8_t));
         return value;
     }
 
@@ -259,7 +258,7 @@ class DataExtractor {
             return 0;
         }
         uint16_t value = 0;
-        (void)memcpy_s(&value, sizeof(uint16_t), ptr, sizeof(uint16_t));
+        (void)memcpy(&value, ptr, sizeof(uint16_t));
         return value;
     }
 
@@ -270,7 +269,7 @@ class DataExtractor {
             return 0;
         }
         int16_t value = 0;
-        (void)memcpy_s(&value, sizeof(int16_t), ptr, sizeof(int16_t));
+        (void)memcpy(&value, ptr, sizeof(int16_t));
         return value;
     }
 
@@ -281,7 +280,7 @@ class DataExtractor {
             return 0;
         }
         int32_t value = 0;
-        (void)memcpy_s(&value, sizeof(int32_t), ptr, sizeof(int32_t));
+        (void)memcpy(&value, ptr, sizeof(int32_t));
         return value;
     }
 
@@ -292,7 +291,7 @@ class DataExtractor {
             return 0;
         }
         uint32_t value = 0;
-        (void)memcpy_s(&value, sizeof(uint32_t), ptr, sizeof(uint32_t));
+        (void)memcpy(&value, ptr, sizeof(uint32_t));
         return value;
     }
 
@@ -303,7 +302,7 @@ class DataExtractor {
             return 0;
         }
         int64_t value = 0;
-        (void)memcpy_s(&value, sizeof(int64_t), ptr, sizeof(int64_t));
+        (void)memcpy(&value, ptr, sizeof(int64_t));
         return value;
     }
 
@@ -314,7 +313,7 @@ class DataExtractor {
             return 0;
         }
         uint64_t value = 0;
-        (void)memcpy_s(&value, sizeof(uint64_t), ptr, sizeof(uint64_t));
+        (void)memcpy(&value, ptr, sizeof(uint64_t));
         return value;
     }
 
@@ -334,9 +333,7 @@ class DataExtractor {
             return 0.0f;
         }
         float value = 0.0f;
-        if (memcpy_s(&value, sizeof(float), ptr, sizeof(float)) != 0) {
-            return 0.0f;
-        }
+        (void)memcpy(&value, ptr, sizeof(float));
         return value;
     }
 
