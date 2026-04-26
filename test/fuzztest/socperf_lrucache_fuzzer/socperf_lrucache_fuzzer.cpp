@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <securec.h>
 
 #include <list>
 #include <memory>

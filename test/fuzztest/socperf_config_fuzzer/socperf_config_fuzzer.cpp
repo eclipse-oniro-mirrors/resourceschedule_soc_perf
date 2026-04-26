@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <securec.h>
 
 #include <memory>
 #include <mutex>
