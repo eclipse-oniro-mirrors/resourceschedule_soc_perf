@@ -51,6 +51,7 @@ ohos_fuzztest("SocPerfIntegrationFuzzTest") {
     "access_token:libnativetoken",
     "access_token:libtoken_setproc",
     "access_token:libtokenid_sdk",
+    "bounds_checking_function:libsec_shared",
     "cJSON:cjson_static",
     "c_utils:utils",
     "config_policy:configpolicy_util",
