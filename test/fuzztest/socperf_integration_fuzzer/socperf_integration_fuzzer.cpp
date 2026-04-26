@@ -63,35 +63,12 @@ constexpr int32_t MAX_VECTOR_SIZE = 100;
 // Resource and command ID ranges
 constexpr int32_t MAX_CMD_ID = 50000;
 constexpr int32_t MAX_THERMAL_LEVEL = 1000;
-constexpr int32_t MAX_CLIENT_ID = 100;
 
 // Stress test iterations
 constexpr int32_t STRESS_ITERATIONS = 50;
 constexpr int32_t RAPID_CALL_COUNT = 100;
 constexpr int32_t STRESS_LOOP_MEDIUM = 20;
-constexpr int32_t STRESS_LOOP_LARGE = 50;
 
-// Test case selectors
-constexpr uint8_t TEST_CASE_INIT = 0;
-constexpr uint8_t TEST_CASE_PERF_REQUEST = 1;
-constexpr uint8_t TEST_CASE_PERF_REQUEST_EX = 2;
-constexpr uint8_t TEST_CASE_POWER_LIMIT_BOOST = 3;
-constexpr uint8_t TEST_CASE_THERMAL_LIMIT_BOOST = 4;
-constexpr uint8_t TEST_CASE_LIMIT_REQUEST = 5;
-constexpr uint8_t TEST_CASE_SET_REQUEST_STATUS = 6;
-constexpr uint8_t TEST_CASE_SET_THERMAL_LEVEL = 7;
-constexpr uint8_t TEST_CASE_REQUEST_DEVICE_MODE = 8;
-constexpr uint8_t TEST_CASE_REQUEST_CMD_ID_COUNT = 9;
-constexpr uint8_t TEST_CASE_RESET_CLIENT = 10;
-constexpr uint8_t TEST_CASE_CONFIG_ISVALIDRESID = 11;
-constexpr uint8_t TEST_CASE_CONFIG_ISGOVERRESID = 12;
-constexpr uint8_t TEST_CASE_COMBINED_SEQUENCE = 13;
-constexpr uint8_t TEST_CASE_BOUNDARY_VALUES = 14;
-constexpr uint8_t TEST_CASE_RACE_SIMULATION = 15;
-constexpr uint8_t TEST_CASE_ERROR_PATHS = 16;
-constexpr uint8_t TEST_CASE_STRING_FUZZING = 17;
-constexpr uint8_t TEST_CASE_VECTOR_FUZZING = 18;
-constexpr uint8_t TEST_CASE_STATE_MACHINE = 19;
 constexpr uint8_t TEST_CASE_COUNT = 20;
 
 // Common test values

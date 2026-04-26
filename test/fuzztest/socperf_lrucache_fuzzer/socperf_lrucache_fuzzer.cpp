@@ -116,23 +116,6 @@ constexpr uint8_t STRESS_OP_GET_RANDOM = 1;
 constexpr uint8_t STRESS_OP_PUT_SEQ = 2;
 constexpr uint8_t STRESS_OP_GET_PREV = 3;
 
-// Test case selectors
-constexpr uint8_t TEST_CASE_BASIC_PUT_GET = 0;
-constexpr uint8_t TEST_CASE_EVICTION = 1;
-constexpr uint8_t TEST_CASE_UPDATE = 2;
-constexpr uint8_t TEST_CASE_MISS = 3;
-constexpr uint8_t TEST_CASE_CAPACITY_CHANGE = 4;
-constexpr uint8_t TEST_CASE_SEQUENTIAL_KEYS = 5;
-constexpr uint8_t TEST_CASE_RANDOM_KEYS = 6;
-constexpr uint8_t TEST_CASE_HOT_KEYS = 7;
-constexpr uint8_t TEST_CASE_DUPLICATE_KEYS = 8;
-constexpr uint8_t TEST_CASE_BOUNDARY_CAPACITY = 9;
-constexpr uint8_t TEST_CASE_MIXED_OPERATIONS = 10;
-constexpr uint8_t TEST_CASE_LARGE_CACHE = 11;
-constexpr uint8_t TEST_CASE_SMALL_CACHE = 12;
-constexpr uint8_t TEST_CASE_PATTERN_FUZZING = 13;
-constexpr uint8_t TEST_CASE_STRESS_TEST = 14;
-constexpr uint8_t TEST_CASE_HOT_KEY_ACCESS = 15;
 constexpr uint8_t TEST_CASE_COUNT = 16;
 
 // ============================================================================

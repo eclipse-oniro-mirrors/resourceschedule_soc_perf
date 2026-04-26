@@ -66,7 +66,6 @@ constexpr size_t MAX_XML_ITEM_SIZE = 100;
 
 // String length constants
 constexpr size_t DEFAULT_STRING_LENGTH = 256;
-constexpr size_t MAX_STRING_LENGTH = 1024;
 constexpr size_t SMALL_STRING_LENGTH = 32;
 constexpr size_t MEDIUM_STRING_LENGTH = 64;
 constexpr size_t LARGE_STRING_LENGTH = 128;
@@ -82,7 +81,6 @@ constexpr int32_t FUZZ_LOOP_BOUND_LARGE = 50;
 constexpr int32_t FUZZ_LOOP_BOUND_XLARGE = 100;
 constexpr int32_t RANGE_TEST_STEP = 10;
 constexpr int32_t RANGE_BOUNDARY_OFFSET = 20;
-constexpr int32_t MAX_XML_RESOURCE_ITEMS = 10;
 
 // Value multipliers for XML generation (G.CNS.02)
 constexpr int64_t VALUE_MULTIPLIER_1M = 1000000;
@@ -96,27 +94,9 @@ constexpr int32_t CMD_ID_RANGE_SIZE = 10000;
 constexpr int32_t GOV_RES_ID_LOOP_STEP = 100;
 constexpr int32_t PERSIST_MODE_TEST_VALUE = 100;
 
-// Test case selectors
-constexpr uint8_t TEST_CONFIG_INIT = 0;
-constexpr uint8_t TEST_CONFIG_ISVALIDRESID = 1;
-constexpr uint8_t TEST_CONFIG_ISGOVERRESID = 2;
-constexpr uint8_t TEST_CONFIG_XML_PARSING = 3;
-constexpr uint8_t TEST_CONFIG_RESOURCE_VALIDATION = 4;
-constexpr uint8_t TEST_CONFIG_GOV_VALIDATION = 5;
-constexpr uint8_t TEST_CONFIG_SCENE_VALIDATION = 6;
-constexpr uint8_t TEST_CONFIG_ACTION_VALIDATION = 7;
-constexpr uint8_t TEST_CONFIG_INTERACTION = 8;
-constexpr uint8_t TEST_CONFIG_BOUNDARY = 9;
-constexpr uint8_t TEST_CONFIG_STRING_PATTERNS = 10;
-constexpr uint8_t TEST_CONFIG_XML_MALFORMED = 11;
-constexpr uint8_t TEST_CONFIG_XML_EMPTY = 12;
-constexpr uint8_t TEST_CONFIG_DUPLICATE_CHECK = 13;
-constexpr uint8_t TEST_CONFIG_RANGE_TEST = 14;
-constexpr uint8_t TEST_CONFIG_HELPER_FUNCTIONS = 15;
 constexpr uint8_t TEST_CASE_COUNT = 16;
 
 // Action type and delay constants
-constexpr int64_t MAX_DELAY_TIME = 100000;
 constexpr int64_t MAX_DELAY_TIME_LARGE = 1000000;
 
 // ============================================================================
