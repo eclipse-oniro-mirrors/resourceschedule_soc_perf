@@ -437,7 +437,7 @@ void GenerateResourceEntry(std::string& xml, DataExtractor& extractor)
             <path>/sys/test/path%d</path>
             <node>%lld %lld %lld</node>
         </res>)";
-    int ret = snprintf_s(buffer, sizeof(buffer), formatStr.c_str(),
+    int ret = snprintf_s(buffer, sizeof(buffer), sizeof(buffer) - 1, formatStr.c_str(),
                          resId, name.c_str(), pairId, mode, persistMode, trace,
                          static_cast<long long>(defValue), resId,
                          static_cast<long long>(defValue),
@@ -475,7 +475,7 @@ std::string GenerateResourceXml(DataExtractor& extractor)
 void GenerateBoostConfigHeader(std::string& xml, const std::string& configMode)
 {
     char configHeader[BUFFER_SIZE_SMALL];
-    int ret = snprintf_s(configHeader, sizeof(configHeader),
+    int ret = snprintf_s(configHeader, sizeof(configHeader), sizeof(configHeader) - 1,
                          R"(
     <Config mode="%s">)",
                          configMode.c_str());
@@ -503,7 +503,7 @@ void GenerateBoostCmdEntry(std::string& xml, DataExtractor& extractor)
     int32_t interaction = extractor.ExtractInt32() % BINARY_MOD;
 
     char cmdBuffer[BUFFER_SIZE_LARGE];
-    int ret = snprintf_s(cmdBuffer, sizeof(cmdBuffer),
+    int ret = snprintf_s(cmdBuffer, sizeof(cmdBuffer), sizeof(cmdBuffer) - 1,
                          R"(
         <cmd id="%d" name="%s" interaction="%d" mode="game=2000|video=3000">
             <Action thermalLvl="%d">

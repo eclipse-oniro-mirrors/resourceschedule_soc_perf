@@ -836,8 +836,8 @@ void TestCaseConfigIsValidResId(DataExtractor& extractor)
     config.IsValidResId(1);
     config.IsValidResId(-1);
     config.IsValidResId(BOUNDARY_VALUE_999);
-    config.IsValidResId(FUZZ_MIN_RESOURCE_ID);
-    config.IsValidResId(FUZZ_MAX_RESOURCE_ID);
+    config.IsValidResId(MIN_RESOURCE_ID);
+    config.IsValidResId(MAX_RESOURCE_ID);
     config.IsValidResId(BOUNDARY_VALUE_6000);
     config.IsValidResId(INT32_MAX);
     config.IsValidResId(INT32_MIN);
@@ -863,13 +863,13 @@ void TestCaseConfigIsGovResId(DataExtractor& extractor)
     config.IsGovResId(1);
     config.IsGovResId(-1);
     config.IsGovResId(BOUNDARY_VALUE_999);
-    config.IsGovResId(FUZZ_MIN_RESOURCE_ID);
-    config.IsGovResId(FUZZ_MAX_RESOURCE_ID);
+    config.IsGovResId(MIN_RESOURCE_ID);
+    config.IsGovResId(MAX_RESOURCE_ID);
     config.IsGovResId(BOUNDARY_VALUE_6000);
     config.IsGovResId(INT32_MAX);
     config.IsGovResId(INT32_MIN);
 
-    for (int32_t i = 0; i <= FUZZ_MAX_RESOURCE_ID; i += LOOP_STEP_SIZE) {
+    for (int32_t i = 0; i <= MAX_RESOURCE_ID; i += LOOP_STEP_SIZE) {
         config.IsGovResId(i);
     }
 }
