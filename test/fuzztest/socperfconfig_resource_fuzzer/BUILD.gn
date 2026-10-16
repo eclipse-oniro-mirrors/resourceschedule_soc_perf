@@ -32,7 +32,14 @@ ohos_fuzztest("SocperfConfigResourceFuzzTest") {
   fuzz_config_file = "${socperf_test}/fuzztest/socperfconfig_resource_fuzzer"
   configs = [ ":socperf_config_resource_private_config" ]
 
-  cflags = ["-g","-O0","-Wno-unused-variable","-fno-omit-frame-pointer"]
+  cflags = [
+    "-g",
+    "-O0",
+    "-Wno-unused-variable",
+    "-fno-omit-frame-pointer",
+    "-Dprivate=public",
+    "-Dprotected=public",
+  ]
   sources = [
     "socperfconfig_resource_fuzzer.cpp",
   ]

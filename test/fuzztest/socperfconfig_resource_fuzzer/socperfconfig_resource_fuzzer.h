@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#ifndef SOCPERFCONFIG_RESOURCE_FUZZER_H
+#define SOCPERFCONFIG_RESOURCE_FUZZER_H
+
 #include <cstdint>
 #include <unistd.h>
 #include <climits>
@@ -22,3 +25,4 @@
 
 #define FUZZ_PROJECT_NAME "socperfconfig_resource_fuzzer"
 
+#endif // SOCPERFCONFIG_RESOURCE_FUZZER_H

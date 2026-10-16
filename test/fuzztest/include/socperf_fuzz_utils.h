@@ -20,13 +20,41 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#include <cstring>
 #include <string>
 #include <unistd.h>
 #include <vector>
 
 namespace OHOS {
 namespace SOCPERF {
+// Synthetic resource ids shared by the soc_perf fuzz targets.
+constexpr int32_t FUZZ_RES_ID_CPU_MAX = 1000;
+constexpr int32_t FUZZ_RES_ID_CPU_MIN = 1001;
+constexpr int32_t FUZZ_RES_ID_CPU_GOV = 1002;
+constexpr int32_t FUZZ_RES_ID_GPU_FREQ = 1003;
+constexpr int32_t FUZZ_RES_ID_UNKNOWN = 9999;
+
+// Synthetic command ids shared by the fuzz configs.
+constexpr int32_t FUZZ_CMD_ID_PERF = 20000;
+constexpr int32_t FUZZ_CMD_ID_LONG_PERF = 20001;
+constexpr int32_t FUZZ_CMD_ID_THERMAL_PERF = 20002;
+constexpr int32_t FUZZ_CMD_ID_WEAK_PERF = 21000;
+constexpr int32_t FUZZ_CMD_ID_WEAK_POWER = 21001;
+constexpr int32_t FUZZ_CMD_ID_WEAK_THERMAL = 21002;
+constexpr int32_t FUZZ_CMD_ID_LIMIT = 30000;
+constexpr int32_t FUZZ_CMD_ID_LIMIT_LEVEL = 30001;
+constexpr int32_t FUZZ_CMD_ID_ALIVE_PERF = 50000;
+
+// Frequency and governor values used by the synthetic resource nodes.
+constexpr int32_t FUZZ_FREQ_CPU_LOW = 100;
+constexpr int32_t FUZZ_FREQ_CPU_MID = 200;
+constexpr int32_t FUZZ_FREQ_CPU_HIGH = 300;
+constexpr int32_t FUZZ_FREQ_GPU_MID = 400;
+constexpr int32_t FUZZ_FREQ_GPU_HIGH = 500;
+constexpr int32_t FUZZ_GOV_PERFORMANCE = 2;
+
+// Maximum length of random text consumed from the fuzz input.
+constexpr size_t FUZZ_RANDOM_TEXT_MAX_LEN = 32;
+
 class FuzzDataProvider {
 public:
     FuzzDataProvider(const uint8_t* data, size_t size) : data_(data), size_(size), offset_(0) {}
@@ -39,7 +67,7 @@ public:
             return fallback;
         }
         T value {};
-        std::memcpy(&value, data_ + offset_, sizeof(T));
+        std::copy_n(data_ + offset_, sizeof(T), reinterpret_cast<uint8_t*>(&value));
         offset_ += sizeof(T);
         return value;
     }

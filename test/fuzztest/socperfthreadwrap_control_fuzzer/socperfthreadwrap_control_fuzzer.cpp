@@ -22,25 +22,30 @@
 
 #include "socperf_fuzz_permission.h"
 #include "socperf_fuzz_utils.h"
-
-#define private public
-#define protected public
 #include "socperf_thread_wrap.h"
-#undef private
-#undef protected
 
 namespace OHOS {
 namespace SOCPERF {
 namespace {
 std::mutex g_threadWrapControlMutex;
 
-constexpr int32_t RES_CPU_MAX = 1000;
-constexpr int32_t RES_CPU_MIN = 1001;
-constexpr int32_t RES_CPU_GOV = 1002;
-constexpr int32_t RES_GPU_FREQ = 1003;
-constexpr int32_t CMD_WEAK_PERF = 21000;
-constexpr int32_t CMD_WEAK_POWER = 21001;
-constexpr int32_t CMD_WEAK_THERMAL = 21002;
+constexpr int64_t PRIME_END_TIME_CPU_MAX = 1000;
+constexpr int64_t PRIME_END_TIME_CPU_MIN = 1100;
+constexpr int64_t PRIME_END_TIME_CPU_GOV = 1200;
+constexpr int64_t PRIME_END_TIME_GPU_FREQ = 1300;
+constexpr int32_t PRIME_END_TIME_JITTER_MAX = 10;
+constexpr int64_t ASYNC_ACTION_END_TIME = 2000;
+constexpr int64_t ASYNC_LEVEL_ACTION_END_TIME = 2100;
+constexpr int64_t STATISTICS_TASK_DELAY_US = 500000;
+
+struct ResActionSeed {
+    int64_t value;
+    int32_t duration;
+    int32_t type;
+    int32_t onOff;
+    int32_t cmdId;
+    int64_t endTime;
+};
 
 int ReportDataStub(const std::vector<int32_t>&, const std::vector<int64_t>&,
     const std::vector<int64_t>&, const std::string&)
@@ -78,10 +83,10 @@ std::shared_ptr<Actions> MakeActions(int32_t cmdId, const std::string& name,
     return actions;
 }
 
-std::shared_ptr<ResAction> MakeResAction(int64_t value, int32_t duration, int32_t type, int32_t onOff,
-    int32_t cmdId, int64_t endTime)
+std::shared_ptr<ResAction> MakeResAction(const ResActionSeed& seed)
 {
-    return std::make_shared<ResAction>(value, duration, type, onOff, cmdId, endTime);
+    return std::make_shared<ResAction>(seed.value, seed.duration, seed.type, seed.onOff,
+        seed.cmdId, seed.endTime);
 }
 
 void DrainQueue(SocPerfThreadWrap& wrap)
@@ -95,46 +100,55 @@ void SeedControlConfig()
     ResetConfig();
     auto& config = SocPerfConfig::GetInstance();
 
-    auto cpuMax = std::make_shared<ResNode>(RES_CPU_MAX, "cpu_max", MAX_FREQUE_NODE, RES_CPU_MIN, REPORT_TO_PERFSO);
-    cpuMax->def = 300;
-    cpuMax->available = {100, 200, 300};
+    auto cpuMax = std::make_shared<ResNode>(FUZZ_RES_ID_CPU_MAX, "cpu_max", MAX_FREQUE_NODE,
+        FUZZ_RES_ID_CPU_MIN, REPORT_TO_PERFSO);
+    cpuMax->def = FUZZ_FREQ_CPU_HIGH;
+    cpuMax->available = {FUZZ_FREQ_CPU_LOW, FUZZ_FREQ_CPU_MID, FUZZ_FREQ_CPU_HIGH};
     cpuMax->trace = true;
-    config.resourceNodeInfo_[RES_CPU_MAX] = cpuMax;
+    config.resourceNodeInfo_[FUZZ_RES_ID_CPU_MAX] = cpuMax;
 
-    auto cpuMin = std::make_shared<ResNode>(RES_CPU_MIN, "cpu_min", 0, RES_CPU_MAX, WRITE_NODE);
-    cpuMin->def = 100;
-    cpuMin->available = {100, 200, 300};
-    config.resourceNodeInfo_[RES_CPU_MIN] = cpuMin;
+    auto cpuMin = std::make_shared<ResNode>(FUZZ_RES_ID_CPU_MIN, "cpu_min", 0,
+        FUZZ_RES_ID_CPU_MAX, WRITE_NODE);
+    cpuMin->def = FUZZ_FREQ_CPU_LOW;
+    cpuMin->available = {FUZZ_FREQ_CPU_LOW, FUZZ_FREQ_CPU_MID, FUZZ_FREQ_CPU_HIGH};
+    config.resourceNodeInfo_[FUZZ_RES_ID_CPU_MIN] = cpuMin;
 
-    auto cpuGov = std::make_shared<GovResNode>(RES_CPU_GOV, "cpu_gov", REPORT_TO_PERFSO);
+    auto cpuGov = std::make_shared<GovResNode>(FUZZ_RES_ID_CPU_GOV, "cpu_gov", REPORT_TO_PERFSO);
     cpuGov->def = 1;
-    cpuGov->available = {1, 2};
-    config.resourceNodeInfo_[RES_CPU_GOV] = cpuGov;
+    cpuGov->available = {1, FUZZ_GOV_PERFORMANCE};
+    config.resourceNodeInfo_[FUZZ_RES_ID_CPU_GOV] = cpuGov;
 
-    auto gpuFreq = std::make_shared<ResNode>(RES_GPU_FREQ, "gpu_freq", 0, INVALID_VALUE, WRITE_NODE);
-    gpuFreq->def = 400;
-    gpuFreq->available = {300, 400, 500};
-    config.resourceNodeInfo_[RES_GPU_FREQ] = gpuFreq;
+    auto gpuFreq = std::make_shared<ResNode>(FUZZ_RES_ID_GPU_FREQ, "gpu_freq", 0,
+        INVALID_VALUE, WRITE_NODE);
+    gpuFreq->def = FUZZ_FREQ_GPU_MID;
+    gpuFreq->available = {FUZZ_FREQ_CPU_HIGH, FUZZ_FREQ_GPU_MID, FUZZ_FREQ_GPU_HIGH};
+    config.resourceNodeInfo_[FUZZ_RES_ID_GPU_FREQ] = gpuFreq;
 
-    auto weakPerf = MakeActions(CMD_WEAK_PERF, "weak_perf", {
-        MakeActionNode(1, {RES_CPU_MAX, 300, RES_CPU_MIN, 100}),
-        MakeActionNode(0, {RES_GPU_FREQ, 400}),
+    auto weakPerf = MakeActions(FUZZ_CMD_ID_WEAK_PERF, "weak_perf", {
+        MakeActionNode(1, {FUZZ_RES_ID_CPU_MAX, FUZZ_FREQ_CPU_HIGH,
+            FUZZ_RES_ID_CPU_MIN, FUZZ_FREQ_CPU_LOW}),
+        MakeActionNode(0, {FUZZ_RES_ID_GPU_FREQ, FUZZ_FREQ_GPU_MID}),
     });
-    auto weakPower = MakeActions(CMD_WEAK_POWER, "weak_power", {
-        MakeActionNode(1, {RES_CPU_MAX, 200, RES_CPU_GOV, 2}),
+    auto weakPower = MakeActions(FUZZ_CMD_ID_WEAK_POWER, "weak_power", {
+        MakeActionNode(1, {FUZZ_RES_ID_CPU_MAX, FUZZ_FREQ_CPU_MID,
+            FUZZ_RES_ID_CPU_GOV, FUZZ_GOV_PERFORMANCE}),
     });
-    auto weakThermal = MakeActions(CMD_WEAK_THERMAL, "weak_thermal", {
-        MakeActionNode(1, {RES_CPU_MAX, 100, RES_GPU_FREQ, 300}),
+    auto weakThermal = MakeActions(FUZZ_CMD_ID_WEAK_THERMAL, "weak_thermal", {
+        MakeActionNode(1, {FUZZ_RES_ID_CPU_MAX, FUZZ_FREQ_CPU_LOW,
+            FUZZ_RES_ID_GPU_FREQ, FUZZ_FREQ_CPU_HIGH}),
     });
 
     auto& actionsInfo = config.configPerfActionsInfo_[DEFAULT_CONFIG_MODE];
-    actionsInfo[CMD_WEAK_PERF] = weakPerf;
-    actionsInfo[CMD_WEAK_POWER] = weakPower;
-    actionsInfo[CMD_WEAK_THERMAL] = weakThermal;
+    actionsInfo[FUZZ_CMD_ID_WEAK_PERF] = weakPerf;
+    actionsInfo[FUZZ_CMD_ID_WEAK_POWER] = weakPower;
+    actionsInfo[FUZZ_CMD_ID_WEAK_THERMAL] = weakThermal;
 
-    config.interAction_.push_back(std::make_shared<InterAction>(CMD_WEAK_PERF, ACTION_TYPE_PERF, 0));
-    config.interAction_.push_back(std::make_shared<InterAction>(CMD_WEAK_POWER, ACTION_TYPE_POWER, 0));
-    config.interAction_.push_back(std::make_shared<InterAction>(CMD_WEAK_THERMAL, ACTION_TYPE_THERMAL, 0));
+    config.interAction_.push_back(
+        std::make_shared<InterAction>(FUZZ_CMD_ID_WEAK_PERF, ACTION_TYPE_PERF, 0));
+    config.interAction_.push_back(
+        std::make_shared<InterAction>(FUZZ_CMD_ID_WEAK_POWER, ACTION_TYPE_POWER, 0));
+    config.interAction_.push_back(
+        std::make_shared<InterAction>(FUZZ_CMD_ID_WEAK_THERMAL, ACTION_TYPE_THERMAL, 0));
 }
 
 void PrepareWrap(SocPerfThreadWrap& wrap, bool fillStatus)
@@ -155,32 +169,36 @@ void PrepareWrap(SocPerfThreadWrap& wrap, bool fillStatus)
 
 void PrimeReportStatus(SocPerfThreadWrap& wrap, FuzzDataProvider& provider)
 {
-    auto cpuMaxStatus = wrap.resStatusInfo_[RES_CPU_MAX];
-    cpuMaxStatus->candidate = provider.ConsumeBool() ? 300 : 200;
+    auto cpuMaxStatus = wrap.resStatusInfo_[FUZZ_RES_ID_CPU_MAX];
+    cpuMaxStatus->candidate = provider.ConsumeBool() ? FUZZ_FREQ_CPU_HIGH : FUZZ_FREQ_CPU_MID;
     cpuMaxStatus->currentValue = MAX_INT32_VALUE;
     cpuMaxStatus->previousValue = NODE_DEFAULT_VALUE;
-    cpuMaxStatus->currentEndTime = 1000 + provider.ConsumeInt32InRange(0, 10);
+    cpuMaxStatus->currentEndTime = PRIME_END_TIME_CPU_MAX +
+        provider.ConsumeInt32InRange(0, PRIME_END_TIME_JITTER_MAX);
     cpuMaxStatus->previousEndTime = MAX_INT_VALUE;
 
-    auto cpuMinStatus = wrap.resStatusInfo_[RES_CPU_MIN];
-    cpuMinStatus->candidate = 100;
-    cpuMinStatus->currentValue = 100;
+    auto cpuMinStatus = wrap.resStatusInfo_[FUZZ_RES_ID_CPU_MIN];
+    cpuMinStatus->candidate = FUZZ_FREQ_CPU_LOW;
+    cpuMinStatus->currentValue = FUZZ_FREQ_CPU_LOW;
     cpuMinStatus->previousValue = NODE_DEFAULT_VALUE;
-    cpuMinStatus->currentEndTime = 1100 + provider.ConsumeInt32InRange(0, 10);
+    cpuMinStatus->currentEndTime = PRIME_END_TIME_CPU_MIN +
+        provider.ConsumeInt32InRange(0, PRIME_END_TIME_JITTER_MAX);
     cpuMinStatus->previousEndTime = MAX_INT_VALUE;
 
-    auto cpuGovStatus = wrap.resStatusInfo_[RES_CPU_GOV];
-    cpuGovStatus->candidate = 2;
-    cpuGovStatus->currentValue = 2;
+    auto cpuGovStatus = wrap.resStatusInfo_[FUZZ_RES_ID_CPU_GOV];
+    cpuGovStatus->candidate = FUZZ_GOV_PERFORMANCE;
+    cpuGovStatus->currentValue = FUZZ_GOV_PERFORMANCE;
     cpuGovStatus->previousValue = NODE_DEFAULT_VALUE;
-    cpuGovStatus->currentEndTime = 1200 + provider.ConsumeInt32InRange(0, 10);
+    cpuGovStatus->currentEndTime = PRIME_END_TIME_CPU_GOV +
+        provider.ConsumeInt32InRange(0, PRIME_END_TIME_JITTER_MAX);
     cpuGovStatus->previousEndTime = MAX_INT_VALUE;
 
-    auto gpuStatus = wrap.resStatusInfo_[RES_GPU_FREQ];
-    gpuStatus->candidate = 400;
-    gpuStatus->currentValue = 400;
+    auto gpuStatus = wrap.resStatusInfo_[FUZZ_RES_ID_GPU_FREQ];
+    gpuStatus->candidate = FUZZ_FREQ_GPU_MID;
+    gpuStatus->currentValue = FUZZ_FREQ_GPU_MID;
     gpuStatus->previousValue = NODE_DEFAULT_VALUE;
-    gpuStatus->currentEndTime = 1300 + provider.ConsumeInt32InRange(0, 10);
+    gpuStatus->currentEndTime = PRIME_END_TIME_GPU_FREQ +
+        provider.ConsumeInt32InRange(0, PRIME_END_TIME_JITTER_MAX);
     gpuStatus->previousEndTime = MAX_INT_VALUE;
 }
 
@@ -195,9 +213,13 @@ void RunAsyncCoverageOnce()
         DrainQueue(*wrap);
 
         wrap->UpdateLimitStatus(INNER_EVENT_ID_DO_FREQ_ACTION,
-            MakeResAction(300, 1, ACTION_TYPE_PERF, EVENT_ON, 30000, 2000), RES_CPU_MAX);
+            MakeResAction({FUZZ_FREQ_CPU_HIGH, 1, ACTION_TYPE_PERF, EVENT_ON,
+                FUZZ_CMD_ID_LIMIT, ASYNC_ACTION_END_TIME}),
+            FUZZ_RES_ID_CPU_MAX);
         wrap->UpdateLimitStatus(INNER_EVENT_ID_DO_FREQ_ACTION_LEVEL,
-            MakeResAction(1, 1, ACTION_TYPE_PERFLVL, EVENT_ON, 30001, 2100), RES_ID_ADDITION + RES_CPU_MAX);
+            MakeResAction({1, 1, ACTION_TYPE_PERFLVL, EVENT_ON,
+                FUZZ_CMD_ID_LIMIT_LEVEL, ASYNC_LEVEL_ACTION_END_TIME}),
+            RES_ID_ADDITION + FUZZ_RES_ID_CPU_MAX);
         wrap->UpdatePowerLimitBoostFreq(true);
         wrap->UpdateThermalLimitBoostFreq(true);
         wrap->ClearAllAliveRequest();
@@ -208,7 +230,7 @@ void RunAsyncCoverageOnce()
         DrainQueue(*wrap);
 
         ffrt::task_attr taskAttr;
-        taskAttr.delay(500000);
+        taskAttr.delay(STATISTICS_TASK_DELAY_US);
         ffrt::task_handle timer = nullptr;
         wrap->SubmitStatisticsTask([]() {}, taskAttr, timer);
         wrap->CancelStatisticsTask(timer);
@@ -222,11 +244,11 @@ void RunDirectCoverage(FuzzDataProvider& provider)
     PrepareWrap(wrap, true);
     auto& config = SocPerfConfig::GetInstance();
 
-    std::vector<int32_t> perfIds = {RES_CPU_MAX, RES_CPU_GOV};
-    std::vector<int64_t> perfValues = {300, 2};
+    std::vector<int32_t> perfIds = {FUZZ_RES_ID_CPU_MAX, FUZZ_RES_ID_CPU_GOV};
+    std::vector<int64_t> perfValues = {FUZZ_FREQ_CPU_HIGH, FUZZ_GOV_PERFORMANCE};
     std::vector<int64_t> perfEndTimes = {MAX_INT_VALUE, MAX_INT_VALUE};
-    std::vector<int32_t> rssIds = {RES_CPU_MIN, RES_GPU_FREQ};
-    std::vector<int64_t> rssValues = {100, 400};
+    std::vector<int32_t> rssIds = {FUZZ_RES_ID_CPU_MIN, FUZZ_RES_ID_GPU_FREQ};
+    std::vector<int64_t> rssValues = {FUZZ_FREQ_CPU_LOW, FUZZ_FREQ_GPU_MID};
     std::vector<int64_t> rssEndTimes = {MAX_INT_VALUE, MAX_INT_VALUE};
     std::vector<int32_t> emptyIds;
     std::vector<int64_t> emptyValues;
@@ -243,7 +265,8 @@ void RunDirectCoverage(FuzzDataProvider& provider)
     wrap.InitResStatus();
 
     wrap.DoWeakInteraction(nullptr, EVENT_ON, ACTION_TYPE_PERF);
-    wrap.DoWeakInteraction(config.configPerfActionsInfo_[DEFAULT_CONFIG_MODE][CMD_WEAK_PERF], EVENT_ON, ACTION_TYPE_PERF);
+    auto weakPerfActions = config.configPerfActionsInfo_[DEFAULT_CONFIG_MODE][FUZZ_CMD_ID_WEAK_PERF];
+    wrap.DoWeakInteraction(weakPerfActions, EVENT_ON, ACTION_TYPE_PERF);
     DrainQueue(wrap);
 
     auto perfInteraction = config.interAction_[0];
@@ -255,7 +278,7 @@ void RunDirectCoverage(FuzzDataProvider& provider)
 
     auto powerInteraction = config.interAction_[1];
     ffrt::task_attr taskAttr;
-    taskAttr.delay(500000);
+    taskAttr.delay(STATISTICS_TASK_DELAY_US);
     wrap.SubmitStatisticsTask([]() {}, taskAttr, powerInteraction->timerTask);
     powerInteraction->status = BOOST_END_STATUS;
     wrap.weakInteractionStatus_ = false;

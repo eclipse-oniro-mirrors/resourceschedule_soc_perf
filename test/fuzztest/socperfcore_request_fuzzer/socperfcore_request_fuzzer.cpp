@@ -22,12 +22,7 @@
 
 #include "socperf_fuzz_permission.h"
 #include "socperf_fuzz_utils.h"
-
-#define private public
-#define protected public
 #include "socperf.h"
-#undef private
-#undef protected
 
 namespace OHOS {
 namespace SOCPERF {
@@ -38,10 +33,8 @@ constexpr int32_t EVENT_FLING = 10008;
 constexpr int32_t EVENT_TOUCH_DOWN = 10010;
 constexpr int32_t EVENT_TOUCH_UP = 10040;
 constexpr int32_t EVENT_DRAG = 10092;
-constexpr int32_t CMD_PERF = 20000;
-constexpr int32_t CMD_LONG_PERF = 20001;
-constexpr int32_t CMD_THERMAL_PERF = 20002;
-constexpr int32_t CMD_THERMAL_LEVEL = 30000;
+constexpr int32_t FUZZ_COPY_EVENT_ID = 10050;
+constexpr int32_t FUZZ_UNKNOWN_EVENT_ID = 99999;
 
 int ReportDataStub(const std::vector<int32_t>&, const std::vector<int64_t>&,
     const std::vector<int64_t>&, const std::string&)
@@ -88,35 +81,44 @@ void SeedCoreConfig()
     ResetConfig();
     auto& config = SocPerfConfig::GetInstance();
 
-    auto maxRes = std::make_shared<ResNode>(1000, "cpu_max", MAX_FREQUE_NODE, 1001, REPORT_TO_PERFSO);
-    maxRes->def = 300;
-    maxRes->available = {100, 200, 300};
-    config.resourceNodeInfo_[1000] = maxRes;
+    auto maxRes = std::make_shared<ResNode>(FUZZ_RES_ID_CPU_MAX, "cpu_max", MAX_FREQUE_NODE,
+        FUZZ_RES_ID_CPU_MIN, REPORT_TO_PERFSO);
+    maxRes->def = FUZZ_FREQ_CPU_HIGH;
+    maxRes->available = {FUZZ_FREQ_CPU_LOW, FUZZ_FREQ_CPU_MID, FUZZ_FREQ_CPU_HIGH};
+    config.resourceNodeInfo_[FUZZ_RES_ID_CPU_MAX] = maxRes;
 
-    auto minRes = std::make_shared<ResNode>(1001, "cpu_min", 0, 1000, REPORT_TO_PERFSO);
-    minRes->def = 100;
-    minRes->available = {100, 200, 300};
-    config.resourceNodeInfo_[1001] = minRes;
+    auto minRes = std::make_shared<ResNode>(FUZZ_RES_ID_CPU_MIN, "cpu_min", 0,
+        FUZZ_RES_ID_CPU_MAX, REPORT_TO_PERFSO);
+    minRes->def = FUZZ_FREQ_CPU_LOW;
+    minRes->available = {FUZZ_FREQ_CPU_LOW, FUZZ_FREQ_CPU_MID, FUZZ_FREQ_CPU_HIGH};
+    config.resourceNodeInfo_[FUZZ_RES_ID_CPU_MIN] = minRes;
 
-    auto gpuRes = std::make_shared<ResNode>(1003, "gpu_freq", 0, INVALID_VALUE, REPORT_TO_PERFSO);
-    gpuRes->def = 400;
-    gpuRes->available = {300, 400, 500};
-    config.resourceNodeInfo_[1003] = gpuRes;
+    auto gpuRes = std::make_shared<ResNode>(FUZZ_RES_ID_GPU_FREQ, "gpu_freq", 0,
+        INVALID_VALUE, REPORT_TO_PERFSO);
+    gpuRes->def = FUZZ_FREQ_GPU_MID;
+    gpuRes->available = {FUZZ_FREQ_CPU_HIGH, FUZZ_FREQ_GPU_MID, FUZZ_FREQ_GPU_HIGH};
+    config.resourceNodeInfo_[FUZZ_RES_ID_GPU_FREQ] = gpuRes;
 
-    auto touchAction = MakeAction(1, {1000, 300, 1001, 100});
-    auto flingAction = MakeAction(1, {1000, 250, 1003, 400});
-    auto perfAction = MakeAction(1, {1000, 280, 1001, 120});
-    auto longPerfAction = MakeAction(0, {1000, 220, 1003, 500});
-    auto thermalPerfAction = MakeAction(1, {1000, 260}, CMD_THERMAL_LEVEL);
-    auto thermalLevelAction = MakeAction(1, {1000, 180, 1001, 100}, INVALID_THERMAL_CMD_ID, 0);
+    auto touchAction = MakeAction(1, {FUZZ_RES_ID_CPU_MAX, FUZZ_FREQ_CPU_HIGH,
+        FUZZ_RES_ID_CPU_MIN, FUZZ_FREQ_CPU_LOW});
+    auto flingAction = MakeAction(1, {FUZZ_RES_ID_CPU_MAX, 250, FUZZ_RES_ID_GPU_FREQ,
+        FUZZ_FREQ_GPU_MID});
+    auto perfAction = MakeAction(1, {FUZZ_RES_ID_CPU_MAX, 280, FUZZ_RES_ID_CPU_MIN, 120});
+    auto longPerfAction = MakeAction(0, {FUZZ_RES_ID_CPU_MAX, 220, FUZZ_RES_ID_GPU_FREQ, 500});
+    auto thermalPerfAction = MakeAction(1, {FUZZ_RES_ID_CPU_MAX, 260}, FUZZ_CMD_ID_LIMIT);
+    auto thermalLevelAction = MakeAction(1, {FUZZ_RES_ID_CPU_MAX, 180, FUZZ_RES_ID_CPU_MIN,
+        FUZZ_FREQ_CPU_LOW}, INVALID_THERMAL_CMD_ID, 0);
 
     std::unordered_map<int32_t, std::shared_ptr<Actions>> defaultActions;
     defaultActions[EVENT_TOUCH_DOWN] = MakeActions(EVENT_TOUCH_DOWN, "touch_down", {touchAction});
     defaultActions[EVENT_FLING] = MakeActions(EVENT_FLING, "fling", {flingAction});
-    defaultActions[CMD_PERF] = MakeActions(CMD_PERF, "perf_request", {perfAction});
-    defaultActions[CMD_LONG_PERF] = MakeActions(CMD_LONG_PERF, "perf_request_ex", {longPerfAction}, true);
-    defaultActions[CMD_THERMAL_PERF] = MakeActions(CMD_THERMAL_PERF, "thermal_perf", {thermalPerfAction});
-    defaultActions[CMD_THERMAL_LEVEL] = MakeActions(CMD_THERMAL_LEVEL, "thermal_level", {thermalLevelAction});
+    defaultActions[FUZZ_CMD_ID_PERF] = MakeActions(FUZZ_CMD_ID_PERF, "perf_request", {perfAction});
+    defaultActions[FUZZ_CMD_ID_LONG_PERF] = MakeActions(FUZZ_CMD_ID_LONG_PERF, "perf_request_ex",
+        {longPerfAction}, true);
+    defaultActions[FUZZ_CMD_ID_THERMAL_PERF] = MakeActions(FUZZ_CMD_ID_THERMAL_PERF, "thermal_perf",
+        {thermalPerfAction});
+    defaultActions[FUZZ_CMD_ID_LIMIT] = MakeActions(FUZZ_CMD_ID_LIMIT, "thermal_level",
+        {thermalLevelAction});
     config.configPerfActionsInfo_[DEFAULT_CONFIG_MODE] = defaultActions;
 }
 
@@ -170,10 +172,11 @@ void RunAsyncCoverageOnce()
         requestCore->thermalLvl_ = 1;
         requestCore->socperfThreadWrap_ = MakeNonOwningWrap(requestWrap);
         requestCore->CompleteEvent();
-        requestCore->PerfRequest(CMD_PERF, "async_perf");
-        requestCore->PerfRequestEx(CMD_LONG_PERF, true, "async_on");
-        requestCore->PerfRequestEx(CMD_LONG_PERF, false, "async_off");
-        requestCore->DoFreqActions(requestCore->GetActionsInfo(CMD_THERMAL_PERF), EVENT_INVALID, ACTION_TYPE_PERF);
+        requestCore->PerfRequest(FUZZ_CMD_ID_PERF, "async_perf");
+        requestCore->PerfRequestEx(FUZZ_CMD_ID_LONG_PERF, true, "async_on");
+        requestCore->PerfRequestEx(FUZZ_CMD_ID_LONG_PERF, false, "async_off");
+        requestCore->DoFreqActions(requestCore->GetActionsInfo(FUZZ_CMD_ID_THERMAL_PERF),
+            EVENT_INVALID, ACTION_TYPE_PERF);
         DrainQueue(*requestWrap);
     });
 }
@@ -188,28 +191,30 @@ void RunDirectCoverage(FuzzDataProvider& provider)
 
     auto& perfActionsInfo = SocPerfConfig::GetInstance().configPerfActionsInfo_[DEFAULT_CONFIG_MODE];
     (void)core.CompleteEvent();
-    core.CopyEvent(EVENT_TOUCH_DOWN, 10050, perfActionsInfo);
-    core.CopyEvent(99999, EVENT_TOUCH_UP, perfActionsInfo);
+    core.CopyEvent(EVENT_TOUCH_DOWN, FUZZ_COPY_EVENT_ID, perfActionsInfo);
+    core.CopyEvent(FUZZ_UNKNOWN_EVENT_ID, EVENT_TOUCH_UP, perfActionsInfo);
 
     auto originAction = std::make_shared<Action>();
     originAction->duration = 1;
-    originAction->thermalCmdId_ = CMD_THERMAL_LEVEL;
-    originAction->variable = {1000, 260};
-    auto head = std::make_shared<ResActionItem>(1000);
-    (void)core.DoPerfRequestThremalLvl(CMD_THERMAL_PERF, originAction, EVENT_INVALID, nullptr, 1000);
-    (void)core.DoPerfRequestThremalLvl(CMD_THERMAL_PERF, originAction, EVENT_INVALID, head, 1000);
+    originAction->thermalCmdId_ = FUZZ_CMD_ID_LIMIT;
+    originAction->variable = {FUZZ_RES_ID_CPU_MAX, 260};
+    auto head = std::make_shared<ResActionItem>(FUZZ_RES_ID_CPU_MAX);
+    (void)core.DoPerfRequestThremalLvl(FUZZ_CMD_ID_THERMAL_PERF, originAction, EVENT_INVALID,
+        nullptr, FUZZ_RES_ID_CPU_MAX);
+    (void)core.DoPerfRequestThremalLvl(FUZZ_CMD_ID_THERMAL_PERF, originAction, EVENT_INVALID,
+        head, FUZZ_RES_ID_CPU_MAX);
 
-    (void)core.GetActionsInfo(CMD_PERF);
-    core.UpdateCmdIdCount(CMD_PERF);
-    core.UpdateCmdIdCount(CMD_PERF);
-    (void)core.RequestCmdIdCount(provider.ConsumeString(32));
+    (void)core.GetActionsInfo(FUZZ_CMD_ID_PERF);
+    core.UpdateCmdIdCount(FUZZ_CMD_ID_PERF);
+    core.UpdateCmdIdCount(FUZZ_CMD_ID_PERF);
+    (void)core.RequestCmdIdCount(provider.ConsumeString(FUZZ_RANDOM_TEXT_MAX_LEN));
 
-    (void)core.CheckTimeInterval(true, CMD_PERF);
-    (void)core.CheckTimeInterval(true, CMD_PERF);
-    (void)core.CheckTimeInterval(false, CMD_PERF);
+    (void)core.CheckTimeInterval(true, FUZZ_CMD_ID_PERF);
+    (void)core.CheckTimeInterval(true, FUZZ_CMD_ID_PERF);
+    (void)core.CheckTimeInterval(false, FUZZ_CMD_ID_PERF);
 
-    core.UpdateDailyCmdIdCount(CMD_PERF);
-    core.UpdateDailyCmdIdCount(CMD_LONG_PERF);
+    core.UpdateDailyCmdIdCount(FUZZ_CMD_ID_PERF);
+    core.UpdateDailyCmdIdCount(FUZZ_CMD_ID_LONG_PERF);
     core.ReportCmdIdStatistics();
     core.ReportCmdIdStatistics();
 }

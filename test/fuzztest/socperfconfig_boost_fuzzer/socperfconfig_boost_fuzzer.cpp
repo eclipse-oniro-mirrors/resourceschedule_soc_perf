@@ -24,16 +24,14 @@
 #include <libxml/tree.h>
 
 #include "socperf_fuzz_utils.h"
-
-#define private public
-#define protected public
 #include "socperf_config.h"
-#undef private
-#undef protected
 
 namespace OHOS {
 namespace SOCPERF {
 namespace {
+constexpr int32_t FUZZ_MANUAL_ACTIONS_CMD_ID = 22000;
+constexpr int32_t FUZZ_MODE_ACTIONS_CMD_ID = 23000;
+
 class XmlDocument {
 public:
     explicit XmlDocument(const std::string& xml)
@@ -232,7 +230,8 @@ void RunDirectParserCases(FuzzDataProvider& provider)
             xmlNode* cmdNode = FindChild(configNode, "cmd");
             if (cmdNode != nullptr) {
                 (void)config.LoadCmdInfo(cmdNode, "mem_boost.xml", DEFAULT_CONFIG_MODE);
-                auto manualActions = std::make_shared<Actions>(22000, "manual_actions");
+                auto manualActions = std::make_shared<Actions>(FUZZ_MANUAL_ACTIONS_CMD_ID,
+                    "manual_actions");
                 (void)config.TraversalBoostResource(cmdNode->children, "mem_boost.xml", manualActions);
             }
         }
@@ -252,7 +251,7 @@ void RunNodeLevelCases()
     ResetConfig(config);
     PrimeResourceConfig(config);
 
-    auto actions = std::make_shared<Actions>(23000, "mode_actions");
+    auto actions = std::make_shared<Actions>(FUZZ_MODE_ACTIONS_CMD_ID, "mode_actions");
     config.ParseModeCmd("display=23001|display=23002|camera=23003|bad|scene=nope", "mode.xml", actions);
 
     XmlDocument durationXml("<act><duration>1</duration></act>");
@@ -274,7 +273,9 @@ void RunNodeLevelCases()
         }
     }
 
-    XmlDocument resValueXml("<act thermalLvl=\"2\" thermalCmdId=\"21003\"><cpu_max>300</cpu_max><unknown>oops</unknown></act>");
+    XmlDocument resValueXml(
+        "<act thermalLvl=\"2\" thermalCmdId=\"21003\"><cpu_max>300</cpu_max>"
+        "<unknown>oops</unknown></act>");
     if (resValueXml.IsValid()) {
         auto action = std::make_shared<Action>();
         (void)config.GetXmlIntProp(resValueXml.root_, "thermalLvl", INVALID_THERMAL_LVL);
@@ -310,25 +311,25 @@ void RunValidationCases()
     invalidResAction->duration = 1;
     invalidResAction->variable = {9999, 100};
 
-    (void)config.TraversalActions(validAction, 21000);
-    (void)config.TraversalActions(invalidValueAction, 21001);
-    (void)config.TraversalActions(invalidResAction, 21002);
+    (void)config.TraversalActions(validAction, FUZZ_CMD_ID_WEAK_PERF);
+    (void)config.TraversalActions(invalidValueAction, FUZZ_CMD_ID_WEAK_POWER);
+    (void)config.TraversalActions(invalidResAction, FUZZ_CMD_ID_WEAK_THERMAL);
 
-    auto validActions = std::make_shared<Actions>(21000, "valid_actions");
+    auto validActions = std::make_shared<Actions>(FUZZ_CMD_ID_WEAK_PERF, "valid_actions");
     validActions->actionList.push_back(validAction);
-    auto invalidActions = std::make_shared<Actions>(21001, "invalid_actions");
+    auto invalidActions = std::make_shared<Actions>(FUZZ_CMD_ID_WEAK_POWER, "invalid_actions");
     invalidActions->actionList.push_back(invalidResAction);
 
     std::unordered_map<int32_t, std::shared_ptr<Actions>> validOnlyActions;
-    validOnlyActions[21000] = validActions;
+    validOnlyActions[FUZZ_CMD_ID_WEAK_PERF] = validActions;
     (void)config.CheckActionsValid(validOnlyActions);
 
     config.configPerfActionsInfo_[DEFAULT_CONFIG_MODE] = validOnlyActions;
     (void)config.CheckActionResIdAndValueValid("boost_valid.xml");
 
     std::unordered_map<int32_t, std::shared_ptr<Actions>> actionsInfo;
-    actionsInfo[21000] = validActions;
-    actionsInfo[21001] = invalidActions;
+    actionsInfo[FUZZ_CMD_ID_WEAK_PERF] = validActions;
+    actionsInfo[FUZZ_CMD_ID_WEAK_POWER] = invalidActions;
     (void)config.CheckActionsValid(actionsInfo);
 
     config.configPerfActionsInfo_[DEFAULT_CONFIG_MODE] = actionsInfo;

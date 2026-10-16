@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#ifndef SOCPERFCORE_LIMIT_FUZZER_H
+#define SOCPERFCORE_LIMIT_FUZZER_H
+
 #include <cstdint>
 #include <unistd.h>
 #include <climits>
@@ -22,3 +25,4 @@
 
 #define FUZZ_PROJECT_NAME "socperfcore_limit_fuzzer"
 
+#endif // SOCPERFCORE_LIMIT_FUZZER_H

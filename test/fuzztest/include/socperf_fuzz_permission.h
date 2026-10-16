@@ -22,22 +22,18 @@
 
 namespace OHOS {
 namespace SOCPERF {
+inline NativeTokenInfoParams& GetFuzzTokenInfoParams()
+{
+    static const char* perms[] = { "ohos.permission.REPORT_RESOURCE_SCHEDULE_EVENT" };
+    static NativeTokenInfoParams infoInstance = {
+        0, sizeof(perms) / sizeof(perms[0]), 0, nullptr, perms, nullptr, "socperf_test", "system_core",
+    };
+    return infoInstance;
+}
+
 inline void MockProcess()
 {
-    static const char *perms[] = {
-        "ohos.permission.REPORT_RESOURCE_SCHEDULE_EVENT"
-    };
-    NativeTokenInfoParams infoInstance = {
-        .dcapsNum = 0,
-        .permsNum = sizeof(perms) / sizeof(perms[0]),
-        .aclsNum = 0,
-        .dcaps = nullptr,
-        .perms = perms,
-        .acls = nullptr,
-        .processName = "socperf_test",
-        .aplStr = "system_core",
-    };
-    uint64_t tokenId = GetAccessTokenId(&infoInstance);
+    uint64_t tokenId = GetAccessTokenId(&GetFuzzTokenInfoParams());
     SetSelfTokenID(tokenId);
     OHOS::Security::AccessToken::AccessTokenKit::ReloadNativeTokenInfo();
 }

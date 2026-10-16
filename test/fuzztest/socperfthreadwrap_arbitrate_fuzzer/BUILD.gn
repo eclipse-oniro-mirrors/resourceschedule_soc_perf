@@ -29,7 +29,14 @@ ohos_fuzztest("SocperfThreadwrapArbitrateFuzzTest") {
     "${socperf_services}/dfx/include",
     "${socperf_test}/fuzztest/include",
   ]
-  cflags = ["-g","-O0","-Wno-unused-variable","-fno-omit-frame-pointer"]
+  cflags = [
+    "-g",
+    "-O0",
+    "-Wno-unused-variable",
+    "-fno-omit-frame-pointer",
+    "-Dprivate=public",
+    "-Dprotected=public",
+  ]
   sources = [
     "socperfthreadwrap_arbitrate_fuzzer.cpp",
   ]

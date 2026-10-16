@@ -24,16 +24,16 @@
 #include <libxml/tree.h>
 
 #include "socperf_fuzz_utils.h"
-
-#define private public
-#define protected public
 #include "socperf_config.h"
-#undef private
-#undef protected
 
 namespace OHOS {
 namespace SOCPERF {
 namespace {
+constexpr int32_t FUZZ_RES_ID_MANUAL = 1100;
+constexpr int32_t FUZZ_RES_ID_GOV_MANUAL = 1102;
+constexpr int32_t FUZZ_RES_ID_PAIR_MISSING = 1999;
+constexpr int32_t FUZZ_PAIR_NODE_DEF_VALUE = 250;
+
 class XmlDocument {
 public:
     explicit XmlDocument(const std::string& xml)
@@ -99,39 +99,10 @@ void ResetConfig(SocPerfConfig& config)
     config.minThermalLvl_ = INVALID_THERMAL_LVL;
 }
 
-std::string BuildValidResourceXml(FuzzDataProvider& provider)
+std::string BuildSceneAndInfoXml(const std::string& sceneName, const std::string& sceneItem1,
+    const std::string& sceneItem2)
 {
-    std::string sceneName = SanitizeName(provider.ConsumeString(12), "display");
-    std::string sceneItem1 = SanitizeName(provider.ConsumeString(12), "open");
-    std::string sceneItem2 = SanitizeName(provider.ConsumeString(12), "fold");
-    int32_t trace1 = provider.ConsumeBool() ? 1 : 0;
-    int32_t trace2 = provider.ConsumeBool() ? 1 : 0;
-    int32_t trace3 = provider.ConsumeBool() ? 1 : 0;
-    int32_t cpuMin = provider.ConsumeInt32InRange(100, 120);
-    int32_t cpuMid = provider.ConsumeInt32InRange(180, 220);
-    int32_t cpuMax = provider.ConsumeInt32InRange(260, 320);
-    int32_t ddrMin = provider.ConsumeInt32InRange(200, 240);
-    int32_t ddrMid = provider.ConsumeInt32InRange(300, 360);
-    int32_t ddrMax = provider.ConsumeInt32InRange(400, 480);
-    return "<Configs>"
-        "<Resource>"
-        "<res id=\"1000\" name=\"cpu_max\" pair=\"1001\" mode=\"1\" switch=\"1\" trace=\"" +
-        std::to_string(trace1) + "\">"
-        "<default>" + std::to_string(cpuMax) + "</default>"
-        "<node>" + std::to_string(cpuMin) + " " + std::to_string(cpuMid) + " " + std::to_string(cpuMax) + "</node>"
-        "</res>"
-        "<res id=\"1001\" name=\"cpu_min\" pair=\"1000\" mode=\"0\" switch=\"1\" trace=\"" +
-        std::to_string(trace2) + "\">"
-        "<default>" + std::to_string(cpuMin) + "</default>"
-        "<node>" + std::to_string(cpuMin) + " " + std::to_string(cpuMid) + " " + std::to_string(cpuMax) + "</node>"
-        "</res>"
-        "<res id=\"1003\" name=\"ddr_freq\" switch=\"0\" trace=\"" + std::to_string(trace3) + "\">"
-        "<default>" + std::to_string(ddrMid) + "</default>"
-        "<path>/tmp/socperf_ddr_freq</path>"
-        "<node>" + std::to_string(ddrMin) + " " + std::to_string(ddrMid) + " " + std::to_string(ddrMax) + "</node>"
-        "</res>"
-        "</Resource>"
-        "<GovResource>"
+    return "<GovResource>"
         "<res id=\"1002\" name=\"cpu_gov\" switch=\"0\" trace=\"1\">"
         "<default>1</default>"
         "<path>/tmp/socperf_gov0</path>"
@@ -150,6 +121,45 @@ std::string BuildValidResourceXml(FuzzDataProvider& provider)
         "<inf path=\"/system/lib64/libsocperf_fuzz_fake.so\" func=\"ReportData\" scenarioFunc=\"ReportScene\"/>"
         "</Info>"
         "</Configs>";
+}
+
+std::string BuildValidResourceXml(FuzzDataProvider& provider)
+{
+    std::string sceneName = SanitizeName(provider.ConsumeString(12), "display");
+    std::string sceneItem1 = SanitizeName(provider.ConsumeString(12), "open");
+    std::string sceneItem2 = SanitizeName(provider.ConsumeString(12), "fold");
+    int32_t trace1 = provider.ConsumeBool() ? 1 : 0;
+    int32_t trace2 = provider.ConsumeBool() ? 1 : 0;
+    int32_t trace3 = provider.ConsumeBool() ? 1 : 0;
+    int32_t cpuMin = provider.ConsumeInt32InRange(100, 120);
+    int32_t cpuMid = provider.ConsumeInt32InRange(180, 220);
+    int32_t cpuMax = provider.ConsumeInt32InRange(260, 320);
+    int32_t ddrMin = provider.ConsumeInt32InRange(200, 240);
+    int32_t ddrMid = provider.ConsumeInt32InRange(300, 360);
+    int32_t ddrMax = provider.ConsumeInt32InRange(400, 480);
+    std::string xml = "<Configs>"
+        "<Resource>"
+        "<res id=\"1000\" name=\"cpu_max\" pair=\"1001\" mode=\"1\" switch=\"1\" trace=\"" +
+        std::to_string(trace1) + "\">"
+        "<default>" + std::to_string(cpuMax) + "</default>"
+        "<node>" + std::to_string(cpuMin) + " " + std::to_string(cpuMid) + " " +
+        std::to_string(cpuMax) + "</node>"
+        "</res>"
+        "<res id=\"1001\" name=\"cpu_min\" pair=\"1000\" mode=\"0\" switch=\"1\" trace=\"" +
+        std::to_string(trace2) + "\">"
+        "<default>" + std::to_string(cpuMin) + "</default>"
+        "<node>" + std::to_string(cpuMin) + " " + std::to_string(cpuMid) + " " +
+        std::to_string(cpuMax) + "</node>"
+        "</res>"
+        "<res id=\"1003\" name=\"ddr_freq\" switch=\"0\" trace=\"" + std::to_string(trace3) + "\">"
+        "<default>" + std::to_string(ddrMid) + "</default>"
+        "<path>/tmp/socperf_ddr_freq</path>"
+        "<node>" + std::to_string(ddrMin) + " " + std::to_string(ddrMid) + " " +
+        std::to_string(ddrMax) + "</node>"
+        "</res>"
+        "</Resource>";
+    xml += BuildSceneAndInfoXml(sceneName, sceneItem1, sceneItem2);
+    return xml;
 }
 
 std::string BuildInvalidResourceXml(FuzzDataProvider& provider)
@@ -182,11 +192,11 @@ void RunFileCases(FuzzDataProvider& provider)
     SocPerfConfig config;
     ResetConfig(config);
     (void)config.GetRealConfigPath(SOCPERF_RESOURCE_CONFIG_XML);
-    (void)config.GetRealConfigPath(provider.ConsumeString(32));
+    (void)config.GetRealConfigPath(provider.ConsumeString(FUZZ_RANDOM_TEXT_MAX_LEN));
     (void)config.GetAllRealConfigPath(SOCPERF_RESOURCE_CONFIG_XML);
-    (void)config.GetAllRealConfigPath(provider.ConsumeString(32));
+    (void)config.GetAllRealConfigPath(provider.ConsumeString(FUZZ_RANDOM_TEXT_MAX_LEN));
     (void)config.LoadAllConfigXmlFile(SOCPERF_RESOURCE_CONFIG_XML);
-    (void)config.LoadAllConfigXmlFile(provider.ConsumeString(32));
+    (void)config.LoadAllConfigXmlFile(provider.ConsumeString(FUZZ_RANDOM_TEXT_MAX_LEN));
     (void)config.LoadConfigXmlFile("");
 
     ScopedTempFile validFile("socperf_resource_valid", BuildValidResourceXml(provider));
@@ -202,6 +212,37 @@ void RunFileCases(FuzzDataProvider& provider)
     ScopedTempFile wrongRootFile("socperf_wrong_root", "<WrongRoot/>");
     if (wrongRootFile.IsValid()) {
         (void)config.LoadConfigXmlFile(wrongRootFile.GetPath());
+    }
+}
+
+void ParseGovSceneAndInfo(SocPerfConfig& config, xmlNode* govNode, xmlNode* sceneNode,
+    xmlNode* infoNode)
+{
+    if (govNode != nullptr) {
+        (void)config.LoadGovResource(govNode, "mem_resource.xml");
+        xmlNode* firstGovRes = FindChild(govNode, "res");
+        if (firstGovRes != nullptr) {
+            auto manualGovNode = std::make_shared<GovResNode>(FUZZ_RES_ID_GOV_MANUAL,
+                "manual_gov", WRITE_NODE);
+            manualGovNode->paths.push_back("/tmp/manual_gov0");
+            manualGovNode->paths.push_back("/tmp/manual_gov1");
+            (void)config.TraversalGovResource(WRITE_NODE, firstGovRes->children,
+                "mem_resource.xml", manualGovNode);
+        }
+    }
+
+    if (sceneNode != nullptr) {
+        (void)config.LoadSceneResource(sceneNode, "mem_resource.xml");
+        (void)config.LoadSceneResource(sceneNode, "mem_resource.xml");
+        xmlNode* firstScene = FindChild(sceneNode, "scene");
+        if (firstScene != nullptr) {
+            auto manualScene = std::make_shared<SceneResNode>("manual_scene", REPORT_TO_PERFSO);
+            (void)config.TraversalSceneResource(firstScene->children, "mem_resource.xml", manualScene);
+        }
+    }
+
+    if (infoNode != nullptr) {
+        config.LoadInfo(infoNode, "mem_resource.xml");
     }
 }
 
@@ -225,42 +266,58 @@ void RunDirectParserCases(FuzzDataProvider& provider)
         xmlNode* firstResNode = FindChild(resourceNode, "res");
         if (firstResNode != nullptr) {
             (void)config.TraversalFreqResource(firstResNode, "mem_resource.xml");
-            auto manualResNode = std::make_shared<ResNode>(1100, "manual_res", MAX_FREQUE_NODE, INVALID_VALUE,
-                REPORT_TO_PERFSO);
-            (void)config.LoadFreqResourceContent(REPORT_TO_PERFSO, firstResNode->children, "mem_resource.xml",
-                manualResNode);
+            auto manualResNode = std::make_shared<ResNode>(FUZZ_RES_ID_MANUAL, "manual_res",
+                MAX_FREQUE_NODE, INVALID_VALUE, REPORT_TO_PERFSO);
+            (void)config.LoadFreqResourceContent(REPORT_TO_PERFSO, firstResNode->children,
+                "mem_resource.xml", manualResNode);
         }
     }
 
-    if (govNode != nullptr) {
-        (void)config.LoadGovResource(govNode, "mem_resource.xml");
-        xmlNode* firstGovRes = FindChild(govNode, "res");
-        if (firstGovRes != nullptr) {
-            auto manualGovNode = std::make_shared<GovResNode>(1102, "manual_gov", WRITE_NODE);
-            manualGovNode->paths.push_back("/tmp/manual_gov0");
-            manualGovNode->paths.push_back("/tmp/manual_gov1");
-            (void)config.TraversalGovResource(WRITE_NODE, firstGovRes->children, "mem_resource.xml", manualGovNode);
-        }
-    }
-
-    if (sceneNode != nullptr) {
-        (void)config.LoadSceneResource(sceneNode, "mem_resource.xml");
-        (void)config.LoadSceneResource(sceneNode, "mem_resource.xml");
-        xmlNode* firstScene = FindChild(sceneNode, "scene");
-        if (firstScene != nullptr) {
-            auto manualScene = std::make_shared<SceneResNode>("manual_scene", REPORT_TO_PERFSO);
-            (void)config.TraversalSceneResource(firstScene->children, "mem_resource.xml", manualScene);
-        }
-    }
-
-    if (infoNode != nullptr) {
-        config.LoadInfo(infoNode, "mem_resource.xml");
-    }
+    ParseGovSceneAndInfo(config, govNode, sceneNode, infoNode);
 
     XmlDocument invalidXml(BuildInvalidResourceXml(provider));
     if (invalidXml.IsValid()) {
-        (void)config.ParseResourceXmlFile(invalidXml.root_, "mem_resource_invalid.xml", invalidXml.doc_);
+        (void)config.ParseResourceXmlFile(invalidXml.root_, "mem_resource_invalid.xml",
+            invalidXml.doc_);
     }
+}
+
+void CheckPairAndGovValidation(SocPerfConfig& config)
+{
+    auto resNode = std::make_shared<ResNode>(FUZZ_RES_ID_CPU_MAX, "cpu", MAX_FREQUE_NODE,
+        FUZZ_RES_ID_CPU_MIN, REPORT_TO_PERFSO);
+    (void)config.LoadResourceAvailable(resNode, "100 200 300");
+    (void)config.LoadResourceAvailable(resNode, "100 bad");
+
+    auto invalidPairNode = std::make_shared<ResNode>(FUZZ_RES_ID_CPU_MIN, "cpu_pair", 0,
+        FUZZ_RES_ID_PAIR_MISSING, REPORT_TO_PERFSO);
+    invalidPairNode->def = FUZZ_PAIR_NODE_DEF_VALUE;
+    invalidPairNode->available.insert(FUZZ_FREQ_CPU_MID);
+    config.resourceNodeInfo_[FUZZ_RES_ID_CPU_MAX] = resNode;
+    config.resourceNodeInfo_[FUZZ_RES_ID_CPU_MIN] = invalidPairNode;
+    (void)config.CheckPairResIdValid();
+    (void)config.CheckDefValid();
+
+    auto validPairNode = std::make_shared<ResNode>(FUZZ_RES_ID_CPU_MIN, "cpu_pair", 0,
+        FUZZ_RES_ID_CPU_MAX, REPORT_TO_PERFSO);
+    resNode->pair = FUZZ_RES_ID_CPU_MIN;
+    resNode->def = FUZZ_FREQ_CPU_HIGH;
+    resNode->available.insert(FUZZ_FREQ_CPU_HIGH);
+    validPairNode->def = FUZZ_FREQ_CPU_MID;
+    validPairNode->available.insert(FUZZ_FREQ_CPU_MID);
+    config.resourceNodeInfo_[FUZZ_RES_ID_CPU_MIN] = validPairNode;
+    (void)config.CheckPairResIdValid();
+    (void)config.CheckDefValid();
+
+    auto govNode = std::make_shared<GovResNode>(FUZZ_RES_ID_CPU_GOV, "gov", WRITE_NODE);
+    govNode->paths.push_back("/tmp/gov0");
+    govNode->paths.push_back("/tmp/gov1");
+    (void)config.LoadGovResourceAvailable(govNode, "1", "performance|schedutil");
+    (void)config.LoadGovResourceAvailable(govNode, "2", "performance");
+    (void)config.CheckGovResourceTag(nullptr, "gov", "0", "gov.xml");
+    (void)config.CheckGovResourceTag("1002", nullptr, "0", "gov.xml");
+    (void)config.CheckGovResourceTag("1002", "gov", "9", "gov.xml");
+    (void)config.CheckGovResourceTag("1002", "gov", "0", "gov.xml");
 }
 
 void RunValidationCases()
@@ -287,37 +344,7 @@ void RunValidationCases()
     (void)config.CheckResourceTag(WRITE_NODE, "200", nullptr, "resource.xml");
     (void)config.CheckResourceTag(WRITE_NODE, "200", "/tmp/test_node", "resource.xml");
 
-    auto resNode = std::make_shared<ResNode>(1000, "cpu", MAX_FREQUE_NODE, 1001, REPORT_TO_PERFSO);
-    (void)config.LoadResourceAvailable(resNode, "100 200 300");
-    (void)config.LoadResourceAvailable(resNode, "100 bad");
-
-    auto invalidPairNode = std::make_shared<ResNode>(1001, "cpu_pair", 0, 1999, REPORT_TO_PERFSO);
-    invalidPairNode->def = 250;
-    invalidPairNode->available.insert(200);
-    config.resourceNodeInfo_[1000] = resNode;
-    config.resourceNodeInfo_[1001] = invalidPairNode;
-    (void)config.CheckPairResIdValid();
-    (void)config.CheckDefValid();
-
-    auto validPairNode = std::make_shared<ResNode>(1001, "cpu_pair", 0, 1000, REPORT_TO_PERFSO);
-    resNode->pair = 1001;
-    resNode->def = 300;
-    resNode->available.insert(300);
-    validPairNode->def = 200;
-    validPairNode->available.insert(200);
-    config.resourceNodeInfo_[1001] = validPairNode;
-    (void)config.CheckPairResIdValid();
-    (void)config.CheckDefValid();
-
-    auto govNode = std::make_shared<GovResNode>(1002, "gov", WRITE_NODE);
-    govNode->paths.push_back("/tmp/gov0");
-    govNode->paths.push_back("/tmp/gov1");
-    (void)config.LoadGovResourceAvailable(govNode, "1", "performance|schedutil");
-    (void)config.LoadGovResourceAvailable(govNode, "2", "performance");
-    (void)config.CheckGovResourceTag(nullptr, "gov", "0", "gov.xml");
-    (void)config.CheckGovResourceTag("1002", nullptr, "0", "gov.xml");
-    (void)config.CheckGovResourceTag("1002", "gov", "9", "gov.xml");
-    (void)config.CheckGovResourceTag("1002", "gov", "0", "gov.xml");
+    CheckPairAndGovValidation(config);
 
     config.ReportConfigLoadAbnormal("resource.xml", "resource fuzz abnormal", -1);
 }
