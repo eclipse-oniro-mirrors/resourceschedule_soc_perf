@@ -35,6 +35,7 @@ constexpr int64_t FUZZ_ACTION_END_TIME = 1000;
 constexpr int32_t FUZZ_INVALID_ON_OFF = 99;
 constexpr int32_t FUZZ_LEVEL_LOOKUP_MAX = 5;
 constexpr int32_t FUZZ_PERF_LEVEL_MAX = 2;
+constexpr int32_t FUZZ_FREQ_CPU_MID_HIGH = 280;
 
 struct ResActionSeed {
     int64_t value;
@@ -254,7 +255,7 @@ void ExercisePairArbitration(SocPerfThreadWrap& wrap, FuzzDataProvider& provider
 
     wrap.UpdatePairResValue(FUZZ_RES_ID_CPU_MAX, FUZZ_FREQ_CPU_HIGH,
         FUZZ_RES_ID_CPU_MIN, FUZZ_FREQ_CPU_LOW);
-    wrap.UpdateCurrentValue(FUZZ_RES_ID_CPU_MAX, 280);
+    wrap.UpdateCurrentValue(FUZZ_RES_ID_CPU_MAX, FUZZ_FREQ_CPU_MID_HIGH);
 
     singleStatus->candidatesValue[ACTION_TYPE_PERF] = INVALID_VALUE;
     singleStatus->candidatesValue[ACTION_TYPE_POWER] = INVALID_VALUE;
