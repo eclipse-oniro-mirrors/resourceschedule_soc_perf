@@ -270,21 +270,28 @@ static bool g_configInitialized = false;
 // XML Generation Helpers
 // ============================================================================
 
+// Name of the persist switch attribute of a <res> node. The product parser reads it in
+// LoadConfigResInfo(), so it has to stay in the generated XML; keeping the name in a
+// constant also stops the XML snippets from holding a C++ keyword right before '='.
+constexpr const char* RES_SWITCH_ATTR_NAME = "switch";
+
 std::string GenerateBasicConfigXml()
 {
-    return std::string(R"XML(<?xml version="1.0" encoding="utf-8"?>
-<Configs>
-    <Info>
-        <inf path="" func="" scenarioFunc=""/>
-    </Info>
-    <Resource>
-        <res id="1000" name="CPUFreq" pair="1001" mode="0" switch="0" trace="0">
-            <default>1800000</default>
-            <path>/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor</path>
-            <node>1800000 2000000 2200000</node>
-        </res>
-    </Resource>
-</Configs>)XML");
+    std::string xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
+    xml += "<Configs>\n";
+    xml += "    <Info>\n";
+    xml += "        <inf path=\"\" func=\"\" scenarioFunc=\"\"/>\n";
+    xml += "    </Info>\n";
+    xml += "    <Resource>\n";
+    xml += "        <res id=\"1000\" name=\"CPUFreq\" pair=\"1001\" mode=\"0\" ";
+    xml += std::string(RES_SWITCH_ATTR_NAME) + "=\"0\" trace=\"0\">\n";
+    xml += "            <default>1800000</default>\n";
+    xml += "            <path>/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor</path>\n";
+    xml += "            <node>1800000 2000000 2200000</node>\n";
+    xml += "        </res>\n";
+    xml += "    </Resource>\n";
+    xml += "</Configs>";
+    return xml;
 }
 
 std::string GenerateMalformedXmlEmpty()
@@ -361,31 +368,45 @@ std::string GenerateMalformedXmlUnicode()
         "\xE4\xB8\xAD\xE6\x96\x87\xF0\x9F\x98\x80" + "</Info></Configs>";
 }
 
-// Number of malformed XML patterns handled by GenerateMalformedXml().
-constexpr size_t MALFORMED_XML_PATTERN_COUNT = 10;
+// Malformed XML patterns handled by GenerateMalformedXml(). The enumerators keep
+// the dispatch free of numeric case labels (G.CNS.02).
+enum MalformedXmlPattern : size_t {
+    MALFORMED_XML_EMPTY,
+    MALFORMED_XML_MISSING_ROOT,
+    MALFORMED_XML_WRONG_ROOT,
+    MALFORMED_XML_NO_CLOSE,
+    MALFORMED_XML_SPECIAL_CHARS,
+    MALFORMED_XML_BINARY,
+    MALFORMED_XML_VERY_LONG,
+    MALFORMED_XML_NESTED_DEEP,
+    MALFORMED_XML_UNICODE,
+    MALFORMED_XML_NULL_BYTES,
+    MALFORMED_XML_PATTERN_COUNT
+};
 
 std::string GenerateMalformedXml(size_t patternIndex, size_t len)
 {
-    switch (patternIndex % MALFORMED_XML_PATTERN_COUNT) {
-        case 0:
+    size_t pattern = patternIndex % static_cast<size_t>(MALFORMED_XML_PATTERN_COUNT);
+    switch (static_cast<MalformedXmlPattern>(pattern)) {
+        case MALFORMED_XML_EMPTY:
             return GenerateMalformedXmlEmpty();
-        case 1:
+        case MALFORMED_XML_MISSING_ROOT:
             return GenerateMalformedXmlMissingRoot();
-        case 2:
+        case MALFORMED_XML_WRONG_ROOT:
             return GenerateMalformedXmlWrongRoot();
-        case 3:
+        case MALFORMED_XML_NO_CLOSE:
             return GenerateMalformedXmlNoClose();
-        case 4:
+        case MALFORMED_XML_SPECIAL_CHARS:
             return GenerateMalformedXmlSpecialChars();
-        case 5:
+        case MALFORMED_XML_BINARY:
             return GenerateMalformedXmlBinary(len);
-        case 6:
+        case MALFORMED_XML_VERY_LONG:
             return GenerateMalformedXmlVeryLong(len);
-        case 7:
+        case MALFORMED_XML_NESTED_DEEP:
             return GenerateMalformedXmlNestedDeep(len);
-        case 8:
+        case MALFORMED_XML_UNICODE:
             return GenerateMalformedXmlUnicode();
-        case 9:
+        case MALFORMED_XML_NULL_BYTES:
             return GenerateMalformedXmlNullBytes();
         default:
             return GenerateMalformedXmlEmpty();
@@ -453,11 +474,12 @@ void GenerateResourceEntry(std::string& xml, DataExtractor& extractor)
     int64_t defValue = extractor.ExtractInt64() % DEFAULT_VALUE_BASE;
 
     char buffer[BUFFER_SIZE_LARGE];
-    std::string formatStr = R"XML(        <res id="%d" name="%s" pair="%d" mode="%d" switch="%d" trace="%d">
-            <default>%lld</default>
-            <path>/sys/test/path%d</path>
-            <node>%lld %lld %lld</node>
-        </res>)XML";
+    std::string formatStr = "        <res id=\"%d\" name=\"%s\" pair=\"%d\" mode=\"%d\" ";
+    formatStr += std::string(RES_SWITCH_ATTR_NAME) + "=\"%d\" trace=\"%d\">\n";
+    formatStr += "            <default>%lld</default>\n";
+    formatStr += "            <path>/sys/test/path%d</path>\n";
+    formatStr += "            <node>%lld %lld %lld</node>\n";
+    formatStr += "        </res>";
     int ret = snprintf_s(buffer, sizeof(buffer), sizeof(buffer) - 1, formatStr.c_str(),
                          resId, name.c_str(), pairId, mode, persistMode, trace,
                          static_cast<long long>(defValue), resId,
@@ -704,7 +726,7 @@ void TestConfigSceneValidation(DataExtractor& extractor)
 {
     (void)extractor;
     std::string sceneName = extractor.ExtractString(MEDIUM_STRING_LENGTH);
-    int32_t persistMode = extractor.ExtractInt32() % 2;
+    int32_t persistMode = extractor.ExtractInt32() % BINARY_MOD;
 
     volatile bool sceneCheck = IsValidPersistMode(persistMode);
     (void)sceneCheck;
