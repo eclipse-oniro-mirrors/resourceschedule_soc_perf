@@ -57,6 +57,8 @@ ohos_fuzztest("SocPerfIntegrationFuzzTest") {
     "config_policy:configpolicy_util",
     "ffrt:libffrt",
     "hilog:libhilog",
+    "hitrace:hitrace_meter",
+    "hitrace:libhitracechain",
     "hisysevent:libhisysevent",
     "init:libbegetutil",
     "ipc:ipc_single",

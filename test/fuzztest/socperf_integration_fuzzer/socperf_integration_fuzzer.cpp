@@ -18,6 +18,7 @@
  * @brief Comprehensive fuzzing driver for SocPerf module integration testing.
  */
 
+#include <algorithm>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -31,6 +32,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include "socperf_integration_fuzzer.h"
 
 // SocPerf headers
 #include "socperf.h"
@@ -181,19 +184,13 @@ constexpr uint8_t TRANSITION_PERF_REQUEST = 7;
 // Inline Validation Functions
 // ============================================================================
 
-inline bool CheckSize(size_t size, size_t minSize)
+// Normalize a fuzzed element count without overflowing on INT32_MIN.
+inline int32_t NormalizeCount(int32_t rawCount)
 {
-    return size >= minSize;
-}
-
-inline bool CheckPointer(const void* ptr)
-{
-    return ptr != nullptr;
-}
-
-inline bool CheckOffset(size_t offset, size_t size, size_t typeSize)
-{
-    return offset + typeSize <= size;
+    if (rawCount == INT32_MIN) {
+        return 0;
+    }
+    return rawCount < 0 ? -rawCount : rawCount;
 }
 
 // ============================================================================
@@ -367,10 +364,7 @@ class DataExtractor {
         if (!CanExtract(sizeof(int32_t))) {
             return result;
         }
-        int32_t numElements = ExtractInt32();
-        if (numElements < 0) {
-            numElements = -numElements;
-        }
+        int32_t numElements = NormalizeCount(ExtractInt32());
         if (numElements > static_cast<int32_t>(maxElements)) {
             numElements = static_cast<int32_t>(maxElements);
         }
@@ -395,10 +389,7 @@ class DataExtractor {
         if (!CanExtract(sizeof(int32_t))) {
             return result;
         }
-        int32_t numElements = ExtractInt32();
-        if (numElements < 0) {
-            numElements = -numElements;
-        }
+        int32_t numElements = NormalizeCount(ExtractInt32());
         if (numElements > static_cast<int32_t>(maxElements)) {
             numElements = static_cast<int32_t>(maxElements);
         }
@@ -488,7 +479,6 @@ using namespace OHOS::SOCPERF;
 static std::mutex g_fuzzMutex;
 static bool g_systemInitialized = false;
 static std::atomic<uint32_t> g_callCounter(0);
-static std::atomic<uint32_t> g_errorCounter(0);
 
 // ============================================================================
 // Test Helper Functions
@@ -1018,6 +1008,7 @@ void TestCaseRaceSimulation(DataExtractor& extractor)
 
 void TestCaseErrorPaths(DataExtractor& extractor)
 {
+    (void)extractor;
     SocPerfClient& client = GetSocPerfClient();
 
     client.ResetClient();
@@ -1158,7 +1149,7 @@ void TestCaseVectorFuzzing(DataExtractor& extractor)
     std::vector<int64_t> extremeConfigs = {
         0, 1, -1, INT64_MAX, INT64_MIN,
         100, 200, 300, 400, 500,
-        0x7FFFFFFFFFFFFFFF, 0x8000000000000000};
+        INT64_MAX - 1, INT64_MIN + 1};
 
     client.LimitRequest(clientId, extremeTags, extremeConfigs, "extreme_values");
     g_callCounter++;

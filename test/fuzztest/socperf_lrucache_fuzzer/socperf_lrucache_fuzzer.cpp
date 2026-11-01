@@ -31,6 +31,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "socperf_lrucache_fuzzer.h"
+
 // SocPerf LRU Cache header
 #include "socperf_lru_cache.h"
 
@@ -99,6 +101,12 @@ constexpr int32_t READ_KEY_OFFSET = 10;
 constexpr int32_t VALUE_MULTIPLIER_1000 = 1000;
 constexpr int32_t CAPACITY_QUARTER_DIV = 4;
 constexpr int32_t CAPACITY_QUARTER_MUL = 3;
+constexpr int32_t VALUE_MULTIPLIER_5 = 5;
+constexpr int32_t BINARY_MOD = 2;
+constexpr int32_t PATTERN_SAME_KEY = 999;
+constexpr int32_t PATTERN_ALT_KEY_A = 100;
+constexpr int32_t PATTERN_ALT_KEY_B = 200;
+constexpr int32_t PATTERN_KEY_RANGE = 1000;
 
 // Derived capacity values
 constexpr int32_t HOT_KEY_RANGE_START = DEFAULT_CAPACITY / CAPACITY_QUARTER_DIV;
@@ -312,7 +320,7 @@ void TestMiss(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& extrac
     // Fill cache
     for (int32_t i = 0; i < SMALL_ITERATION_COUNT; ++i) {
         K key = static_cast<K>(i);
-        V value = static_cast<V>(i * 100);
+        V value = static_cast<V>(i * VALUE_MULTIPLIER_100);
         cache.put(key, value);
     }
 
@@ -382,7 +390,7 @@ void TestHotKeys(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& ext
     // Insert items
     for (int32_t i = 0; i < LARGE_ITERATION_COUNT; ++i) {
         K key = static_cast<K>(i);
-        V value = static_cast<V>(i * 100);
+        V value = static_cast<V>(i * VALUE_MULTIPLIER_100);
         cache.put(key, value);
     }
 
@@ -474,7 +482,7 @@ void TestBoundaryCapacity(DataExtractor& extractor)
         OHOS::SOCPERF::SocPerfLRUCache<K, V> cache(EXTRA_LARGE_CACHE_ITEMS);
         for (int32_t i = 0; i < EXTRA_LARGE_CACHE_ITEMS; ++i) {
             K key = static_cast<K>(i);
-            V value = static_cast<V>(i * 5);
+            V value = static_cast<V>(i * VALUE_MULTIPLIER_5);
             cache.put(key, value);
         }
     }
@@ -522,7 +530,8 @@ void TestLargeCache(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& 
         cache.put(key, value);
 
         if (i % READ_INTERVAL == 0) {
-            K readKey = static_cast<K>(i - READ_KEY_OFFSET);
+            size_t readIndex = i > static_cast<size_t>(READ_KEY_OFFSET) ? i - static_cast<size_t>(READ_KEY_OFFSET) : i;
+            K readKey = static_cast<K>(readIndex);
             V retrievedValue;
             (void)cache.get(readKey, retrievedValue);
         }
@@ -548,7 +557,7 @@ void TestPatternFuzzing(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtract
 {
     (void)extractor;
     // Pattern 1: Same key
-    K sameKey = static_cast<K>(999);
+    K sameKey = static_cast<K>(PATTERN_SAME_KEY);
     for (int32_t i = 0; i < MEDIUM_ITERATION_COUNT; ++i) {
         V value = static_cast<V>(i);
         cache.put(sameKey, value);
@@ -556,14 +565,14 @@ void TestPatternFuzzing(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtract
 
     // Pattern 2: Alternating keys
     for (int32_t i = 0; i < MEDIUM_ITERATION_COUNT; ++i) {
-        K key = static_cast<K>((i % 2 == 0) ? 100 : 200);
+        K key = static_cast<K>((i % BINARY_MOD == 0) ? PATTERN_ALT_KEY_A : PATTERN_ALT_KEY_B);
         V value = static_cast<V>(i);
         cache.put(key, value);
     }
 
     // Pattern 3: Hash-like distribution
     for (int32_t i = 0; i < MEDIUM_ITERATION_COUNT; ++i) {
-        K key = static_cast<K>((i * PATTERN_HASH_MOD) % 1000);
+        K key = static_cast<K>((i * PATTERN_HASH_MOD) % PATTERN_KEY_RANGE);
         V value = static_cast<V>(i * PATTERN_MULTIPLIER);
         cache.put(key, value);
     }
@@ -604,7 +613,8 @@ void TestStressTest(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor& 
                 break;
             }
             case STRESS_OP_GET_PREV: {
-                K key = static_cast<K>(i - 1);
+                size_t prevIndex = i > 0 ? i - 1 : 0;
+                K key = static_cast<K>(prevIndex);
                 V value;
                 (void)cache.get(key, value);
                 break;
@@ -622,7 +632,7 @@ void TestHotKeyAccess(OHOS::SOCPERF::SocPerfLRUCache<K, V>& cache, DataExtractor
     // Insert a set of initial items
     for (int32_t i = 0; i < DEFAULT_CAPACITY; ++i) {
         K key = static_cast<K>(i);
-        V value = static_cast<V>(i * 10);
+        V value = static_cast<V>(i * VALUE_MULTIPLIER_10);
         cache.put(key, value);
     }
 

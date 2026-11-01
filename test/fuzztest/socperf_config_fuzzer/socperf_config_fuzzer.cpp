@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <ctime>
 #include <securec.h>
 
 #include <memory>
@@ -30,6 +31,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include "socperf_config_fuzzer.h"
 
 // SocPerf headers
 #include "socperf_action_type.h"
@@ -102,6 +105,15 @@ constexpr int64_t MAX_DELAY_TIME_LARGE = 1000000;
 // ============================================================================
 // DataExtractor Class
 // ============================================================================
+
+// Absolute value of a fuzzed int32_t that never overflows on INT32_MIN.
+inline int32_t AbsInt32(int32_t value)
+{
+    if (value == INT32_MIN) {
+        return 0;
+    }
+    return value < 0 ? -value : value;
+}
 
 class DataExtractor {
    public:
@@ -190,10 +202,7 @@ class DataExtractor {
         if (!CanExtract(sizeof(int32_t))) {
             return result;
         }
-        int32_t numElements = ExtractInt32();
-        if (numElements < 0) {
-            numElements = -numElements;
-        }
+        int32_t numElements = AbsInt32(ExtractInt32());
         if (numElements > static_cast<int32_t>(maxElements)) {
             numElements = static_cast<int32_t>(maxElements);
         }
@@ -263,21 +272,19 @@ static bool g_configInitialized = false;
 
 std::string GenerateBasicConfigXml()
 {
-    return std::string(R"(<?xml version="1.0" encoding="utf-8"?>
+    return std::string(R"XML(<?xml version="1.0" encoding="utf-8"?>
 <Configs>
     <Info>
         <inf path="" func="" scenarioFunc=""/>
     </Info>
     <Resource>
-        <res id="1000" name="CPUFreq" pair="1001" mode="0"")") +
-           std::string(" switch=\"0\"") +
-           R"( trace="0">
+        <res id="1000" name="CPUFreq" pair="1001" mode="0" switch="0" trace="0">
             <default>1800000</default>
             <path>/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor</path>
             <node>1800000 2000000 2200000</node>
         </res>
     </Resource>
-</Configs>)";
+</Configs>)XML");
 }
 
 std::string GenerateMalformedXmlEmpty()
@@ -348,36 +355,56 @@ std::string GenerateMalformedXmlNullBytes()
     return result;
 }
 
-std::string GenerateMalformedXml(const std::string& pattern, size_t len)
+std::string GenerateMalformedXmlUnicode()
 {
-    if (pattern == "empty") {
-        return GenerateMalformedXmlEmpty();
+    return std::string("<?xml version=\"1.0\"?>\n<Configs><Info>") +
+        "\xE4\xB8\xAD\xE6\x96\x87\xF0\x9F\x98\x80" + "</Info></Configs>";
+}
+
+// Number of malformed XML patterns handled by GenerateMalformedXml().
+constexpr size_t MALFORMED_XML_PATTERN_COUNT = 10;
+
+std::string GenerateMalformedXml(size_t patternIndex, size_t len)
+{
+    switch (patternIndex % MALFORMED_XML_PATTERN_COUNT) {
+        case 0:
+            return GenerateMalformedXmlEmpty();
+        case 1:
+            return GenerateMalformedXmlMissingRoot();
+        case 2:
+            return GenerateMalformedXmlWrongRoot();
+        case 3:
+            return GenerateMalformedXmlNoClose();
+        case 4:
+            return GenerateMalformedXmlSpecialChars();
+        case 5:
+            return GenerateMalformedXmlBinary(len);
+        case 6:
+            return GenerateMalformedXmlVeryLong(len);
+        case 7:
+            return GenerateMalformedXmlNestedDeep(len);
+        case 8:
+            return GenerateMalformedXmlUnicode();
+        case 9:
+            return GenerateMalformedXmlNullBytes();
+        default:
+            return GenerateMalformedXmlEmpty();
     }
-    if (pattern == "missing_root") {
-        return GenerateMalformedXmlMissingRoot();
+}
+
+// Write fuzzed XML content to a temporary file so the file IO path is exercised, then clean up.
+void WriteTempXmlFile(const char* prefix, const std::string& content, int32_t suffix)
+{
+    std::string tempFile = std::string("/data/local/tmp/") + prefix + std::to_string(suffix) + ".xml";
+    FILE* fp = fopen(tempFile.c_str(), "wb");
+    if (fp == nullptr) {
+        return;
     }
-    if (pattern == "wrong_root") {
-        return GenerateMalformedXmlWrongRoot();
+    if (!content.empty()) {
+        (void)fwrite(content.c_str(), 1, content.size(), fp);
     }
-    if (pattern == "no_close") {
-        return GenerateMalformedXmlNoClose();
-    }
-    if (pattern == "special_chars") {
-        return GenerateMalformedXmlSpecialChars();
-    }
-    if (pattern == "binary") {
-        return GenerateMalformedXmlBinary(len);
-    }
-    if (pattern == "very_long") {
-        return GenerateMalformedXmlVeryLong(len);
-    }
-    if (pattern == "nested_deep") {
-        return GenerateMalformedXmlNestedDeep(len);
-    }
-    if (pattern == "null_bytes") {
-        return GenerateMalformedXmlNullBytes();
-    }
-    return GenerateMalformedXmlEmpty();
+    (void)fclose(fp);
+    (void)remove(tempFile.c_str());
 }
 
 // Helper function to generate resource XML header
@@ -391,27 +418,23 @@ void GenerateResourceXmlHeader(std::string& xml)
 // Helper function to generate single resource entry
 int32_t ValidateResourceId(int32_t resId)
 {
-    if (resId < 0) {
-        resId = -resId;
+    int32_t id = AbsInt32(resId);
+    if (id < FUZZ_MIN_RESOURCE_ID) {
+        id = FUZZ_MIN_RESOURCE_ID + (id % FUZZ_LOOP_BOUND_XLARGE);
     }
-    if (resId < FUZZ_MIN_RESOURCE_ID) {
-        resId = FUZZ_MIN_RESOURCE_ID + (resId % FUZZ_LOOP_BOUND_XLARGE);
+    if (id > FUZZ_MAX_RESOURCE_ID) {
+        id = FUZZ_MAX_RESOURCE_ID - (id % FUZZ_LOOP_BOUND_SMALL);
     }
-    if (resId > FUZZ_MAX_RESOURCE_ID) {
-        resId = FUZZ_MAX_RESOURCE_ID - (resId % FUZZ_LOOP_BOUND_SMALL);
-    }
-    return resId;
+    return id;
 }
 
 int32_t ValidatePairId(int32_t pairId)
 {
-    if (pairId < 0) {
-        pairId = -pairId;
+    int32_t id = AbsInt32(pairId);
+    if (id > FUZZ_MAX_RESOURCE_ID) {
+        id = 0;
     }
-    if (pairId > FUZZ_MAX_RESOURCE_ID) {
-        pairId = 0;
-    }
-    return pairId;
+    return id;
 }
 
 void GenerateResourceEntry(std::string& xml, DataExtractor& extractor)
@@ -430,13 +453,11 @@ void GenerateResourceEntry(std::string& xml, DataExtractor& extractor)
     int64_t defValue = extractor.ExtractInt64() % DEFAULT_VALUE_BASE;
 
     char buffer[BUFFER_SIZE_LARGE];
-    std::string formatStr = std::string(R"(        <res id="%d" name="%s" pair="%d" mode="%d" )") +
-                            "switch=\"%d\"" +
-                            R"( trace="%d">
+    std::string formatStr = R"XML(        <res id="%d" name="%s" pair="%d" mode="%d" switch="%d" trace="%d">
             <default>%lld</default>
             <path>/sys/test/path%d</path>
             <node>%lld %lld %lld</node>
-        </res>)";
+        </res>)XML";
     int ret = snprintf_s(buffer, sizeof(buffer), sizeof(buffer) - 1, formatStr.c_str(),
                          resId, name.c_str(), pairId, mode, persistMode, trace,
                          static_cast<long long>(defValue), resId,
@@ -628,47 +649,23 @@ void TestConfigIsGovResId(DataExtractor& extractor)
 
 void TestConfigXmlParsing(DataExtractor& extractor)
 {
-    uint8_t patternType = extractor.ExtractUInt8() % 11;
-    std::string patterns[] = {
-        "empty", "missing_root", "wrong_root", "no_close",
-        "special_chars", "binary", "very_long", "nested_deep",
-        "unicode", "null_bytes"};
-
-    std::string malformedXml = GenerateMalformedXml(patterns[patternType], extractor.Remaining());
-    std::string tempFile = "/tmp/fuzz_config_" + std::to_string(extractor.ExtractInt32()) + ".xml";
-
-    FILE* fp = fopen(tempFile.c_str(), "wb");
-    if (fp != nullptr) {
-        fwrite(malformedXml.c_str(), 1, malformedXml.size(), fp);
-        fclose(fp);
-        remove(tempFile.c_str());
-    }
+    size_t patternType = extractor.ExtractUInt8() % MALFORMED_XML_PATTERN_COUNT;
+    std::string malformedXml = GenerateMalformedXml(patternType, extractor.Remaining());
+    WriteTempXmlFile("fuzz_config_", malformedXml, extractor.ExtractInt32());
 
     std::string validXml = GenerateBasicConfigXml();
-    fp = fopen(tempFile.c_str(), "wb");
-    if (fp != nullptr) {
-        fwrite(validXml.c_str(), 1, validXml.size(), fp);
-        fclose(fp);
-        remove(tempFile.c_str());
-    }
+    WriteTempXmlFile("fuzz_valid_", validXml, extractor.ExtractInt32());
 }
 
 void TestConfigResourceValidation(DataExtractor& extractor)
 {
-    std::string resourceXml = GenerateResourceXml(extractor);
-    std::string tempFile = "/tmp/fuzz_resource_" + std::to_string(extractor.ExtractInt32()) + ".xml";
-
-    FILE* fp = fopen(tempFile.c_str(), "wb");
-    if (fp != nullptr) {
-        fwrite(resourceXml.c_str(), 1, resourceXml.size(), fp);
-        fclose(fp);
-        remove(tempFile.c_str());
-    }
+    WriteTempXmlFile("fuzz_resource_", GenerateResourceXml(extractor), extractor.ExtractInt32());
+    WriteTempXmlFile("fuzz_boost_", GenerateBoostXml(extractor), extractor.ExtractInt32());
 
     volatile bool rangeCheck = IsValidRangeResId(extractor.ExtractInt32());
     (void)rangeCheck;
 
-    volatile bool persistCheck = IsValidPersistMode(extractor.ExtractInt32() % 2);
+    volatile bool persistCheck = IsValidPersistMode(extractor.ExtractInt32() % BINARY_MOD);
     (void)persistCheck;
 
     std::string testNums[] = {
@@ -826,16 +823,8 @@ void TestConfigStringPatterns(DataExtractor& extractor)
 
 void TestConfigXmlMalformed(DataExtractor& extractor)
 {
-    size_t remaining = extractor.Remaining();
-    std::string malformedXml = GenerateMalformedXml("binary", remaining);
-    std::string tempFile = "/tmp/fuzz_malformed_" + std::to_string(extractor.ExtractInt32()) + ".xml";
-
-    FILE* fp = fopen(tempFile.c_str(), "wb");
-    if (fp != nullptr) {
-        fwrite(malformedXml.c_str(), 1, malformedXml.size(), fp);
-        fclose(fp);
-        remove(tempFile.c_str());
-    }
+    std::string malformedXml = GenerateMalformedXmlBinary(extractor.Remaining());
+    WriteTempXmlFile("fuzz_malformed_", malformedXml, extractor.ExtractInt32());
 }
 
 void TestConfigXmlEmpty(DataExtractor& extractor)
@@ -843,14 +832,7 @@ void TestConfigXmlEmpty(DataExtractor& extractor)
     (void)extractor;
     std::string emptyXml = "<?xml version=\"1.0\"?><Configs></Configs>";
     time_t currentTime = time(nullptr);
-    std::string tempFile = "/tmp/fuzz_empty_" + std::to_string(static_cast<long>(currentTime)) + ".xml";
-
-    FILE* fp = fopen(tempFile.c_str(), "wb");
-    if (fp != nullptr) {
-        fwrite(emptyXml.c_str(), 1, emptyXml.size(), fp);
-        fclose(fp);
-        remove(tempFile.c_str());
-    }
+    WriteTempXmlFile("fuzz_empty_", emptyXml, static_cast<int32_t>(currentTime));
 }
 
 void TestConfigDuplicateCheck(DataExtractor& extractor)
