@@ -65,7 +65,7 @@ public:
     void CancelStatisticsTask(ffrt::task_handle& timer);
     void SetPerformanceModeStatus(bool enable);
 public:
-    int32_t thermalLvl_ = DEFAULT_THERMAL_LVL;
+    std::atomic<int32_t> thermalLvl_{DEFAULT_THERMAL_LVL};
 
 private:
     static const int32_t SCALES_OF_MILLISECONDS_TO_MICROSECONDS = 1000;
