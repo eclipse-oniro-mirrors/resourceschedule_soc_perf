@@ -118,7 +118,7 @@ void SocPerf::CopyEvent(const int32_t oldCmdId, const int32_t newCmdId,
 void SocPerf::PerfRequest(int32_t cmdId, const std::string& msg)
 {
     SocPerfHiTraceChain traceChain(__func__);
-    if (!enabled_ || !perfRequestEnable_) {
+    if (!enabled_ || !perfRequestEnable_.load(std::memory_order_relaxed)) {
         SOC_PERF_LOGD("SocPerf disabled!");
         return;
     }
@@ -147,7 +147,7 @@ void SocPerf::PerfRequest(int32_t cmdId, const std::string& msg)
 void SocPerf::PerfRequestEx(int32_t cmdId, bool onOffTag, const std::string& msg)
 {
     SocPerfHiTraceChain traceChain(__func__);
-    if (!enabled_ || !perfRequestEnable_) {
+    if (!enabled_ || !perfRequestEnable_.load(std::memory_order_relaxed)) {
         SOC_PERF_LOGD("SocPerf disabled!");
         return;
     }
@@ -183,12 +183,16 @@ void SocPerf::PowerLimitBoost(bool onOffTag, const std::string& msg)
         SOC_PERF_LOGD("SocPerf disabled!");
         return;
     }
-    if (msg == "Low_battery_limit") {
-        batteryLimitStatus_ = onOffTag;
-    } else {
-        powerLimitStatus_ = onOffTag;
+    bool isLowBatteryLimit = (GetMsgInfo(msg, "type") == "Low_battery_limit");
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (isLowBatteryLimit) {
+            batteryLimitStatus_ = onOffTag;
+        } else {
+            powerLimitStatus_ = onOffTag;
+        }
+        onOffTag = batteryLimitStatus_ || powerLimitStatus_;
     }
-    onOffTag = batteryLimitStatus_ || powerLimitStatus_;
 
     SOC_PERF_LOGI("onOffTag[%{public}d]msg[%{public}s]", onOffTag, msg.c_str());
     std::string trace_str(__func__);
@@ -313,9 +317,9 @@ void SocPerf::LimitRequest(int32_t clientId,
 void SocPerf::SetRequestStatus(bool status, const std::string& msg)
 {
     SOC_PERF_LOGI("requestEnable is changed to %{public}d, the reason is %{public}s", status, msg.c_str());
-    perfRequestEnable_ = status;
+    perfRequestEnable_.store(status, std::memory_order_relaxed);
     /* disable socperf sever, we should clear all alive request to avoid high freq for long time */
-    if (!perfRequestEnable_) {
+    if (!status) {
         ClearAllAliveRequest();
     }
 }
