@@ -16,6 +16,7 @@
 #ifndef SOC_PERF_SERVICES_CORE_INCLUDE_SOCPERF_H
 #define SOC_PERF_SERVICES_CORE_INCLUDE_SOCPERF_H
 
+#include <atomic>
 #include <set>
 #include <sstream>
 #include "libxml/tree.h"
@@ -47,8 +48,8 @@ private:
     std::set<std::string> recordDeviceMode_;
     std::vector<std::unordered_map<int32_t, int32_t>> limitRequest_ =
         std::vector<std::unordered_map<int32_t, int32_t>>(ACTION_TYPE_MAX);
-    volatile bool perfRequestEnable_ = true;
-    int32_t thermalLvl_ = DEFAULT_THERMAL_LVL;
+    std::atomic<bool> perfRequestEnable_{true};
+    std::atomic<int32_t> thermalLvl_{DEFAULT_THERMAL_LVL};
     bool batteryLimitStatus_ = false;
     bool powerLimitStatus_ = false;
     SocPerfConfig &socPerfConfig_ = SocPerfConfig::GetInstance();
@@ -84,6 +85,7 @@ private:
         std::unordered_map<int32_t, std::shared_ptr<Actions>>& perfActionsInfo);
     bool CheckTimeInterval(bool onOff, int32_t cmdId);
     bool CompleteEvent();
+    std::string GetMsgInfo(const std::string& msg, const std::string& msgKey);
     std::string GetDeviceMode();
     int32_t GetMatchCmdId(int32_t cmdId, bool isTagOnOff);
     std::string MatchDeviceMode(const std::string& mode, bool status,

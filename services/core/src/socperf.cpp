@@ -26,6 +26,8 @@ namespace {
     const int32_t CANCEL_CMDID_PREFIX = 100000;
     const std::string DEFAULT_MODE = "default";
     const std::string SPLIT_COLON = ":";
+    const std::string SPLIT_OR = "|";
+    const std::string SPLIT_EQUAL = "=";
     const std::string ACTION_MODE_STRING = "actionmode";
     const std::string WEAK_ACTION_STRING = "weakaction";
     const int32_t DEVICEMODE_PARAM_NUMBER = 2;
@@ -118,7 +120,7 @@ void SocPerf::CopyEvent(const int32_t oldCmdId, const int32_t newCmdId,
 void SocPerf::PerfRequest(int32_t cmdId, const std::string& msg)
 {
     SocPerfHiTraceChain traceChain(__func__);
-    if (!enabled_ || !perfRequestEnable_) {
+    if (!enabled_ || !perfRequestEnable_.load(std::memory_order_relaxed)) {
         SOC_PERF_LOGD("SocPerf disabled!");
         return;
     }
@@ -147,7 +149,7 @@ void SocPerf::PerfRequest(int32_t cmdId, const std::string& msg)
 void SocPerf::PerfRequestEx(int32_t cmdId, bool onOffTag, const std::string& msg)
 {
     SocPerfHiTraceChain traceChain(__func__);
-    if (!enabled_ || !perfRequestEnable_) {
+    if (!enabled_ || !perfRequestEnable_.load(std::memory_order_relaxed)) {
         SOC_PERF_LOGD("SocPerf disabled!");
         return;
     }
@@ -183,24 +185,43 @@ void SocPerf::PowerLimitBoost(bool onOffTag, const std::string& msg)
         SOC_PERF_LOGD("SocPerf disabled!");
         return;
     }
-    if (msg == "Low_battery_limit") {
-        batteryLimitStatus_ = onOffTag;
-    } else {
-        powerLimitStatus_ = onOffTag;
-    }
-    onOffTag = batteryLimitStatus_ || powerLimitStatus_;
+    bool isLowBatteryLimit = (GetMsgInfo(msg, "type") == "Low_battery_limit");
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (isLowBatteryLimit) {
+            batteryLimitStatus_ = onOffTag;
+        } else {
+            powerLimitStatus_ = onOffTag;
+        }
+        onOffTag = batteryLimitStatus_ || powerLimitStatus_;
 
-    SOC_PERF_LOGI("onOffTag[%{public}d]msg[%{public}s]", onOffTag, msg.c_str());
-    std::string trace_str(__func__);
-    trace_str.append(",onOff[").append(std::to_string(onOffTag)).append("]");
-    trace_str.append(",msg[").append(msg).append("]");
-    StartTraceEx(HITRACE_LEVEL_INFO, HITRACE_TAG_SOCPERF, trace_str.c_str());
-    socperfThreadWrap_->UpdatePowerLimitBoostFreq(onOffTag);
-    HiSysEventWrite(OHOS::HiviewDFX::HiSysEvent::Domain::RSS, "LIMIT_BOOST",
-                    OHOS::HiviewDFX::HiSysEvent::EventType::BEHAVIOR,
-                    "CLIENT_ID", ACTION_TYPE_POWER,
-                    "ON_OFF_TAG", onOffTag);
-    FinishTraceEx(HITRACE_LEVEL_INFO, HITRACE_TAG_SOCPERF);
+        SOC_PERF_LOGI("onOffTag[%{public}d]msg[%{public}s]", onOffTag, msg.c_str());
+        std::string trace_str(__func__);
+        trace_str.append(",onOff[").append(std::to_string(onOffTag)).append("]");
+        trace_str.append(",msg[").append(msg).append("]");
+        StartTraceEx(HITRACE_LEVEL_INFO, HITRACE_TAG_SOCPERF, trace_str.c_str());
+        socperfThreadWrap_->UpdatePowerLimitBoostFreq(onOffTag);
+        HiSysEventWrite(OHOS::HiviewDFX::HiSysEvent::Domain::RSS, "LIMIT_BOOST",
+                        OHOS::HiviewDFX::HiSysEvent::EventType::BEHAVIOR,
+                        "CLIENT_ID", ACTION_TYPE_POWER,
+                        "ON_OFF_TAG", onOffTag);
+        FinishTraceEx(HITRACE_LEVEL_INFO, HITRACE_TAG_SOCPERF);
+    }
+}
+
+std::string SocPerf::GetMsgInfo(const std::string& msg, const std::string& msgKey)
+{
+    std::vector<std::string> msgList = Split(msg, SPLIT_OR);
+    for (auto pairStr : msgList) {
+        std::vector<std::string> subMsg = Split(pairStr, SPLIT_EQUAL);
+        if (subMsg.size() != DEVICEMODE_PARAM_NUMBER) {
+            continue;
+        }
+        if (subMsg[MODE_TYPE_INDEX] == msgKey) {
+            return subMsg[MODE_NAME_INDEX];
+        }
+    }
+    return "";
 }
 
 void SocPerf::ThermalLimitBoost(bool onOffTag, const std::string& msg)
@@ -313,9 +334,9 @@ void SocPerf::LimitRequest(int32_t clientId,
 void SocPerf::SetRequestStatus(bool status, const std::string& msg)
 {
     SOC_PERF_LOGI("requestEnable is changed to %{public}d, the reason is %{public}s", status, msg.c_str());
-    perfRequestEnable_ = status;
+    perfRequestEnable_.store(status, std::memory_order_relaxed);
     /* disable socperf sever, we should clear all alive request to avoid high freq for long time */
-    if (!perfRequestEnable_) {
+    if (!status) {
         ClearAllAliveRequest();
     }
 }
@@ -341,8 +362,8 @@ void SocPerf::SetThermalLevel(int32_t level)
     StartTraceEx(HITRACE_LEVEL_INFO, HITRACE_TAG_SOCPERF, trace_str.c_str());
     SOC_PERF_LOGI("ThermalLevel:%{public}d", level);
     FinishTraceEx(HITRACE_LEVEL_INFO, HITRACE_TAG_SOCPERF);
-    thermalLvl_ = level;
-    socperfThreadWrap_->thermalLvl_ = level;
+    thermalLvl_.store(level, std::memory_order_release);
+    socperfThreadWrap_->thermalLvl_.store(level, std::memory_order_release);
 }
 
 std::shared_ptr<ResActionItem> SocPerf::DoPerfRequestThremalLvl(int32_t cmdId, std::shared_ptr<Action> originAction,
@@ -360,7 +381,7 @@ std::shared_ptr<ResActionItem> SocPerf::DoPerfRequestThremalLvl(int32_t cmdId, s
     // select the Nearest thermallevel action
     std::shared_ptr<Action> action = nullptr;
     for (auto iter = cmdConfig->actionList.begin(); iter != cmdConfig->actionList.end(); iter++) {
-        if ((*iter)->thermalLvl_ <= thermalLvl_) {
+        if ((*iter)->thermalLvl_ <= thermalLvl_.load(std::memory_order_acquire)) {
             if (action == nullptr || action->thermalLvl_ <= (*iter)->thermalLvl_) {
                 action = *iter;
             }
@@ -386,6 +407,9 @@ std::shared_ptr<ResActionItem> SocPerf::DoPerfRequestThremalLvl(int32_t cmdId, s
 
 void SocPerf::DoFreqActions(std::shared_ptr<Actions> actions, int32_t onOff, int32_t actionType)
 {
+    if (actions == nullptr) {
+        return;
+    }
     std::shared_ptr<ResActionItem> header = nullptr;
     std::shared_ptr<ResActionItem> curItem = nullptr;
     auto now = std::chrono::system_clock::now();
@@ -414,7 +438,8 @@ void SocPerf::DoFreqActions(std::shared_ptr<Actions> actions, int32_t onOff, int
             }
             curItem = resActionItem;
         }
-        if (action->thermalCmdId_ != INVALID_THERMAL_CMD_ID && thermalLvl_ >= socPerfConfig_.minThermalLvl_) {
+        if (action->thermalCmdId_ != INVALID_THERMAL_CMD_ID &&
+            thermalLvl_.load(std::memory_order_acquire) >= socPerfConfig_.minThermalLvl_) {
             curItem = DoPerfRequestThremalLvl(actions->id, action, onOff, curItem, endTime);
         }
     }
@@ -592,7 +617,14 @@ std::shared_ptr<Actions> SocPerf::GetActionsInfo(int32_t cmdId)
         socPerfConfig_.configPerfActionsInfo_[matchMode].end()) {
         return socPerfConfig_.configPerfActionsInfo_[matchMode][cmdId];
     }
-    return socPerfConfig_.configPerfActionsInfo_[DEFAULT_CONFIG_MODE][cmdId];
+    auto outerIt = socPerfConfig_.configPerfActionsInfo_.find(DEFAULT_CONFIG_MODE);
+    if (outerIt != socPerfConfig_.configPerfActionsInfo_.end()) {
+        auto innerIt = outerIt->second.find(cmdId);
+        if (innerIt != outerIt->second.end()) {
+            return innerIt->second;
+        }
+    }
+    return nullptr;
 }
 
 bool SocPerf::CheckTimeInterval(bool onOff, int32_t cmdId)
