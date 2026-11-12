@@ -49,7 +49,7 @@ private:
     std::vector<std::unordered_map<int32_t, int32_t>> limitRequest_ =
         std::vector<std::unordered_map<int32_t, int32_t>>(ACTION_TYPE_MAX);
     std::atomic<bool> perfRequestEnable_{true};
-    int32_t thermalLvl_ = DEFAULT_THERMAL_LVL;
+    std::atomic<int32_t> thermalLvl_{DEFAULT_THERMAL_LVL};
     bool batteryLimitStatus_ = false;
     bool powerLimitStatus_ = false;
     SocPerfConfig &socPerfConfig_ = SocPerfConfig::GetInstance();
