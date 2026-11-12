@@ -432,6 +432,9 @@ bool SocPerfThreadWrap::GetResValueByLevel(int32_t resId, int32_t level, int64_t
 void SocPerfThreadWrap::UpdateResActionList(int32_t resId, std::shared_ptr<ResAction> resAction, bool delayed)
 {
     std::shared_ptr<ResStatus> resStatus = resStatusInfo_[resId];
+    if (resStatus == nullptr) {
+        return;
+    }
     int32_t type = resAction->type;
 
     if (delayed) {
@@ -444,6 +447,9 @@ void SocPerfThreadWrap::UpdateResActionList(int32_t resId, std::shared_ptr<ResAc
 void SocPerfThreadWrap::UpdateResActionListByDelayedMsg(int32_t resId, int32_t type,
     std::shared_ptr<ResAction> resAction, std::shared_ptr<ResStatus> resStatus)
 {
+    if (resStatus == nullptr) {
+        return;
+    }
     for (auto iter = resStatus->resActionList[type].begin();
         iter != resStatus->resActionList[type].end(); ++iter) {
         if (resAction == *iter) {
@@ -480,6 +486,9 @@ void SocPerfThreadWrap::HandleResAction(int32_t resId, int32_t type,
 void SocPerfThreadWrap::UpdateResActionListByInstantMsg(int32_t resId, int32_t type,
     std::shared_ptr<ResAction> resAction, std::shared_ptr<ResStatus> resStatus)
 {
+    if (resStatus == nullptr) {
+        return;
+    }
     switch (resAction->onOff) {
         case EVENT_INVALID:
         case EVENT_ON: {
@@ -507,6 +516,9 @@ void SocPerfThreadWrap::UpdateResActionListByInstantMsg(int32_t resId, int32_t t
 void SocPerfThreadWrap::UpdateCandidatesValue(int32_t resId, int32_t type)
 {
     std::shared_ptr<ResStatus> resStatus = resStatusInfo_[resId];
+    if (resStatus == nullptr) {
+        return;
+    }
     int64_t prevValue = resStatus->candidatesValue[type];
     int64_t prevEndTime = resStatus->candidatesEndTime[type];
 
@@ -547,6 +559,9 @@ void SocPerfThreadWrap::InnerArbitrateCandidatesValue(int32_t type, std::shared_
 void SocPerfThreadWrap::ArbitrateCandidate(int32_t resId)
 {
     std::shared_ptr<ResStatus> resStatus = resStatusInfo_[resId];
+    if (resStatus == nullptr) {
+        return;
+    }
     // if perf, power and thermal don't have valid value, send default value
     if (ExistNoCandidate(resId, resStatus)) {
         return;
@@ -564,6 +579,9 @@ void SocPerfThreadWrap::ArbitrateCandidate(int32_t resId)
 void SocPerfThreadWrap::ProcessLimitCase(int32_t resId)
 {
     std::shared_ptr<ResStatus> resStatus = resStatusInfo_[resId];
+    if (resStatus == nullptr) {
+        return;
+    }
     int64_t candidatePerfValue = resStatus->candidatesValue[ACTION_TYPE_PERF];
     int64_t candidatePowerValue = resStatus->candidatesValue[ACTION_TYPE_POWER];
     int64_t candidateThermalValue = resStatus->candidatesValue[ACTION_TYPE_THERMAL];
@@ -597,6 +615,9 @@ void SocPerfThreadWrap::ProcessLimitCase(int32_t resId)
 bool SocPerfThreadWrap::ArbitratePairResInPerfLvl(int32_t resId)
 {
     std::shared_ptr<ResStatus> resStatus = resStatusInfo_[resId];
+    if (resStatus == nullptr) {
+        return false;
+    }
     int32_t pairResId = INVALID_VALUE;
     if (!socPerfConfig_.IsGovResId(resId)) {
         pairResId = std::static_pointer_cast<ResNode>(socPerfConfig_.resourceNodeInfo_[resId])->pair;
@@ -609,7 +630,7 @@ bool SocPerfThreadWrap::ArbitratePairResInPerfLvl(int32_t resId)
     }
     // if this resource has PerfRequestLvl value, the final arbitrate value change to PerfRequestLvl value
     if (resStatus->candidatesValue[ACTION_TYPE_PERFLVL] != INVALID_VALUE) {
-        if (thermalLvl_ == 0 && resStatus->candidate != INVALID_VALUE) {
+        if (thermalLvl_.load(std::memory_order_acquire) == 0 && resStatus->candidate != INVALID_VALUE) {
             resStatus->candidate = Min(resStatus->candidate, resStatus->candidatesValue[ACTION_TYPE_PERFLVL]);
         } else {
             resStatus->candidate = resStatus->candidatesValue[ACTION_TYPE_PERFLVL];
@@ -617,7 +638,7 @@ bool SocPerfThreadWrap::ArbitratePairResInPerfLvl(int32_t resId)
     }
     // only limit max when PerfRequestLvl has max value
     bool limit = false;
-    if (thermalLvl_ != 0 &&
+    if (thermalLvl_.load(std::memory_order_acquire) != 0 &&
         !socPerfConfig_.IsGovResId(resId) &&
         ((socPerfConfig_.resourceNodeInfo_[resId] != nullptr && socPerfConfig_.resourceNodeInfo_[resId]->isMaxValue) ||
         (pairResId != INVALID_VALUE && socPerfConfig_.resourceNodeInfo_[pairResId] != nullptr &&
