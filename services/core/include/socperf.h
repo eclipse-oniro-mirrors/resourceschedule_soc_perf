@@ -85,6 +85,7 @@ private:
         std::unordered_map<int32_t, std::shared_ptr<Actions>>& perfActionsInfo);
     bool CheckTimeInterval(bool onOff, int32_t cmdId);
     bool CompleteEvent();
+    std::string GetMsgInfo(const std::string& msg, const std::string& msgKey);
     std::string GetDeviceMode();
     int32_t GetMatchCmdId(int32_t cmdId, bool isTagOnOff);
     std::string MatchDeviceMode(const std::string& mode, bool status,
