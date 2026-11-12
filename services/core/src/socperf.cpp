@@ -26,6 +26,8 @@ namespace {
     const int32_t CANCEL_CMDID_PREFIX = 100000;
     const std::string DEFAULT_MODE = "default";
     const std::string SPLIT_COLON = ":";
+    const std::string SPLIT_OR = "|";
+    const std::string SPLIT_EQUAL = "=";
     const std::string ACTION_MODE_STRING = "actionmode";
     const std::string WEAK_ACTION_STRING = "weakaction";
     const int32_t DEVICEMODE_PARAM_NUMBER = 2;
