@@ -207,6 +207,21 @@ void SocPerf::PowerLimitBoost(bool onOffTag, const std::string& msg)
     }
 }
 
+std::string SocPerf::GetMsgInfo(const std::string& msg, const std::string& msgKey)
+{
+    std::vector<std::string> msgList = Split(msg, SPLIT_OR);
+    for (auto pairStr : msgList) {
+        std::vector<std::string> subMsg = Split(pairStr, SPLIT_EQUAL);
+        if (subMsg.size() != DEVICEMODE_PARAM_NUMBER) {
+            continue;
+        }
+        if (subMsg[MODE_TYPE_INDEX] == msgKey) {
+            return subMsg[MODE_NAME_INDEX];
+        }
+    }
+    return "";
+}
+
 void SocPerf::ThermalLimitBoost(bool onOffTag, const std::string& msg)
 {
     SocPerfHiTraceChain traceChain(__func__);
