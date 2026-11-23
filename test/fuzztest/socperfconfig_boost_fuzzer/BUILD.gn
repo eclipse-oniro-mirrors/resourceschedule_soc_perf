@@ -50,6 +50,7 @@ ohos_fuzztest("SocperfConfigBoostFuzzTest") {
     "c_utils:utils",
     "ffrt:libffrt",
     "hilog:libhilog",
+    "libxml2:libxml2",
   ]
 }
 ###############################################################################
