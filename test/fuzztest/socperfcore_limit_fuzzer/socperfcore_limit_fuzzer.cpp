@@ -175,7 +175,7 @@ void PrimeDirectedCore(SocPerf& core, SocPerfThreadWrap& wrap, FuzzDataProvider&
     core.perfRequestEnable_ = true;
     core.thermalLvl_ = provider.ConsumeInt32InRange(0, FUZZ_THERMAL_LEVEL_MID);
     core.socperfThreadWrap_ = MakeNonOwningWrap(&wrap);
-    wrap.thermalLvl_ = core.thermalLvl_;
+    wrap.thermalLvl_ = core.thermalLvl_.load(std::memory_order_relaxed);
 
     core.enabled_ = false;
     core.PowerLimitBoost(true, "disabled_power");
