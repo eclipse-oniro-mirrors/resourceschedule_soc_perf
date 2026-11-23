@@ -82,7 +82,7 @@ bool SocPerfConfig::Init()
 bool SocPerfConfig::IsGovResId(int32_t resId) const
 {
     auto item = resourceNodeInfo_.find(resId);
-    if (item != resourceNodeInfo_.end() && item->second->isGov) {
+    if (item != resourceNodeInfo_.end() && item->second != nullptr && item->second->isGov) {
         return true;
     }
     return false;
