@@ -16,10 +16,8 @@
 #ifndef TEST_FUZZTEST_SOCPERF_FUZZ_MOCK_H
 #define TEST_FUZZTEST_SOCPERF_FUZZ_MOCK_H
 
-#include "accesstoken_kit.h"
-#include "nativetoken_kit.h"
 #include "soc_perf_stub.h"
-#include "token_setproc.h"
+#include "socperf_fuzz_permission.h"
 
 namespace OHOS {
 namespace SOCPERF {
@@ -64,26 +62,6 @@ public:
         return ERR_OK;
     }
 };
-void MockProcess()
-{
-    static const char *perms[] = {
-        "ohos.permission.REPORT_RESOURCE_SCHEDULE_EVENT"
-    };
-    uint64_t tokenId;
-    NativeTokenInfoParams infoInstance = {
-        .dcapsNum = 0,
-        .permsNum = sizeof(perms) / sizeof(perms[0]),
-        .aclsNum = 0,
-        .dcaps = nullptr,
-        .perms = perms,
-        .acls = nullptr,
-        .processName = "socperf_test",
-        .aplStr = "system_core",
-    };
-    tokenId = GetAccessTokenId(&infoInstance);
-    SetSelfTokenID(tokenId);
-    OHOS::Security::AccessToken::AccessTokenKit::ReloadNativeTokenInfo();
-}
 }
 }
 #endif
