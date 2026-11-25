@@ -184,7 +184,7 @@ HWTEST_F(SocPerfServerTest, SocPerfServerTest_SocPerfServerAPI_001, Function | M
     std::string msg = "";
     socPerfServer_->SetRequestStatus(false, msg);
     socPerfServer_->socPerf.ClearAllAliveRequest();
-    EXPECT_FALSE(socPerfServer_->socPerf.perfRequestEnable_);
+    EXPECT_FALSE(socPerfServer_->socPerf.perfRequestEnable_.load(std::memory_order_relaxed));
     auto socPerfThreadWrap = std::make_shared<SocPerfThreadWrap>();
     socPerfThreadWrap->ClearAllAliveRequest();
     for (const std::pair<int32_t, std::shared_ptr<ResStatus>>& item : socPerfThreadWrap->resStatusInfo_) {

@@ -26,6 +26,11 @@
 namespace OHOS {
 namespace SOCPERF {
 
+namespace {
+    constexpr int32_t PERF_REQUEST_CMD_ID_WEAK_INTERACTION = 9101;
+    constexpr int32_t PERF_REQUEST_CMD_ID_WEAK_INTERACTION_PERFORMANCE_MODE = 39101;
+}
+
 SocPerfThreadWrap::SocPerfThreadWrap() : socperfQueue_("socperf", ffrt::queue_attr().qos(ffrt::qos_user_interactive))
 {
 }
@@ -175,6 +180,27 @@ void SocPerfThreadWrap::InitResStatus()
     ReportToRssExe(qosIdToRssEx, valueToRssEx, endTimeToRssEx);
 }
 
+void SocPerfThreadWrap::SetPerformanceModeStatus(bool enable)
+{
+    std::function<void()>&& performanceModeFunc = [this, enable]() {
+        std::string trace_str("SetPerformanceModeStatus");
+        trace_str.append("[").append(enable ? "true" : "false").append("]");
+        StartTraceEx(HITRACE_LEVEL_INFO, HITRACE_TAG_SOCPERF, trace_str.c_str());
+        performanceModeStatus_ = enable;
+        SOC_PERF_LOGI("SetPerformanceModeStatus is %{public}d.", enable);
+        FinishTraceEx(HITRACE_LEVEL_INFO, HITRACE_TAG_SOCPERF);
+    };
+    socperfQueue_.submit(performanceModeFunc);
+}
+
+int32_t SocPerfThreadWrap::GetModeCmdId(int32_t cmdId)
+{
+    if (cmdId == PERF_REQUEST_CMD_ID_WEAK_INTERACTION && performanceModeStatus_) {
+        return PERF_REQUEST_CMD_ID_WEAK_INTERACTION_PERFORMANCE_MODE;
+    }
+    return cmdId;
+}
+
 void SocPerfThreadWrap::SetWeakInteractionStatus(bool enable)
 {
     std::function<void()>&& weakInteractionFunc = [this, enable]() {
@@ -197,11 +223,12 @@ void SocPerfThreadWrap::WeakInteraction()
             interAction->status = BOOST_END_STATUS;
             std::function<void()>&& updateLimitStatusFunc = [this, i]() {
                 socPerfConfig_.interAction_[i]->status = WEAK_INTERACTION_STATUS;
+                int32_t cmdId = GetModeCmdId(socPerfConfig_.interAction_[i]->cmdId);
                 DoWeakInteraction(
-                    socPerfConfig_.configPerfActionsInfo_[DEFAULT_CONFIG_MODE][socPerfConfig_.interAction_[i]->cmdId],
+                    socPerfConfig_.configPerfActionsInfo_[DEFAULT_CONFIG_MODE][cmdId],
                     EVENT_ON, socPerfConfig_.interAction_[i]->actionType);
                 std::string trace_str("WeakInteraction");
-                trace_str.append(",cmdId[").append(std::to_string(socPerfConfig_.interAction_[i]->cmdId)).append("]");
+                trace_str.append(",cmdId[").append(std::to_string(cmdId)).append("]");
                 trace_str.append(",onOff[").append(std::to_string(EVENT_ON)).append("]");
                 StartTraceEx(HITRACE_LEVEL_INFO, HITRACE_TAG_SOCPERF, trace_str.c_str());
                 FinishTraceEx(HITRACE_LEVEL_INFO, HITRACE_TAG_SOCPERF);
@@ -211,11 +238,12 @@ void SocPerfThreadWrap::WeakInteraction()
             interAction->timerTask = socperfQueue_.submit_h(updateLimitStatusFunc, taskAttr);
         } else if ((!weakInteractionStatus_ || boostResCnt != 0) && interAction->status == WEAK_INTERACTION_STATUS) {
             interAction->status = BOOST_STATUS;
+            int32_t cmdId = GetModeCmdId(interAction->cmdId);
             DoWeakInteraction(
-                socPerfConfig_.configPerfActionsInfo_[DEFAULT_CONFIG_MODE][interAction->cmdId],
+                socPerfConfig_.configPerfActionsInfo_[DEFAULT_CONFIG_MODE][cmdId],
                 EVENT_OFF, interAction->actionType);
             std::string trace_str("WeakInteraction");
-            trace_str.append(",cmdId[").append(std::to_string(interAction->cmdId)).append("]");
+            trace_str.append(",cmdId[").append(std::to_string(cmdId)).append("]");
             trace_str.append(",onOff[").append(std::to_string(EVENT_OFF)).append("]");
             StartTraceEx(HITRACE_LEVEL_INFO, HITRACE_TAG_SOCPERF, trace_str.c_str());
             FinishTraceEx(HITRACE_LEVEL_INFO, HITRACE_TAG_SOCPERF);
@@ -404,6 +432,9 @@ bool SocPerfThreadWrap::GetResValueByLevel(int32_t resId, int32_t level, int64_t
 void SocPerfThreadWrap::UpdateResActionList(int32_t resId, std::shared_ptr<ResAction> resAction, bool delayed)
 {
     std::shared_ptr<ResStatus> resStatus = resStatusInfo_[resId];
+    if (resStatus == nullptr) {
+        return;
+    }
     int32_t type = resAction->type;
 
     if (delayed) {
@@ -416,6 +447,9 @@ void SocPerfThreadWrap::UpdateResActionList(int32_t resId, std::shared_ptr<ResAc
 void SocPerfThreadWrap::UpdateResActionListByDelayedMsg(int32_t resId, int32_t type,
     std::shared_ptr<ResAction> resAction, std::shared_ptr<ResStatus> resStatus)
 {
+    if (resStatus == nullptr) {
+        return;
+    }
     for (auto iter = resStatus->resActionList[type].begin();
         iter != resStatus->resActionList[type].end(); ++iter) {
         if (resAction == *iter) {
@@ -452,6 +486,9 @@ void SocPerfThreadWrap::HandleResAction(int32_t resId, int32_t type,
 void SocPerfThreadWrap::UpdateResActionListByInstantMsg(int32_t resId, int32_t type,
     std::shared_ptr<ResAction> resAction, std::shared_ptr<ResStatus> resStatus)
 {
+    if (resStatus == nullptr) {
+        return;
+    }
     switch (resAction->onOff) {
         case EVENT_INVALID:
         case EVENT_ON: {
@@ -479,6 +516,9 @@ void SocPerfThreadWrap::UpdateResActionListByInstantMsg(int32_t resId, int32_t t
 void SocPerfThreadWrap::UpdateCandidatesValue(int32_t resId, int32_t type)
 {
     std::shared_ptr<ResStatus> resStatus = resStatusInfo_[resId];
+    if (resStatus == nullptr) {
+        return;
+    }
     int64_t prevValue = resStatus->candidatesValue[type];
     int64_t prevEndTime = resStatus->candidatesEndTime[type];
 
@@ -519,6 +559,9 @@ void SocPerfThreadWrap::InnerArbitrateCandidatesValue(int32_t type, std::shared_
 void SocPerfThreadWrap::ArbitrateCandidate(int32_t resId)
 {
     std::shared_ptr<ResStatus> resStatus = resStatusInfo_[resId];
+    if (resStatus == nullptr) {
+        return;
+    }
     // if perf, power and thermal don't have valid value, send default value
     if (ExistNoCandidate(resId, resStatus)) {
         return;
@@ -536,6 +579,9 @@ void SocPerfThreadWrap::ArbitrateCandidate(int32_t resId)
 void SocPerfThreadWrap::ProcessLimitCase(int32_t resId)
 {
     std::shared_ptr<ResStatus> resStatus = resStatusInfo_[resId];
+    if (resStatus == nullptr) {
+        return;
+    }
     int64_t candidatePerfValue = resStatus->candidatesValue[ACTION_TYPE_PERF];
     int64_t candidatePowerValue = resStatus->candidatesValue[ACTION_TYPE_POWER];
     int64_t candidateThermalValue = resStatus->candidatesValue[ACTION_TYPE_THERMAL];
@@ -569,6 +615,9 @@ void SocPerfThreadWrap::ProcessLimitCase(int32_t resId)
 bool SocPerfThreadWrap::ArbitratePairResInPerfLvl(int32_t resId)
 {
     std::shared_ptr<ResStatus> resStatus = resStatusInfo_[resId];
+    if (resStatus == nullptr) {
+        return false;
+    }
     int32_t pairResId = INVALID_VALUE;
     if (!socPerfConfig_.IsGovResId(resId)) {
         pairResId = std::static_pointer_cast<ResNode>(socPerfConfig_.resourceNodeInfo_[resId])->pair;
@@ -581,7 +630,7 @@ bool SocPerfThreadWrap::ArbitratePairResInPerfLvl(int32_t resId)
     }
     // if this resource has PerfRequestLvl value, the final arbitrate value change to PerfRequestLvl value
     if (resStatus->candidatesValue[ACTION_TYPE_PERFLVL] != INVALID_VALUE) {
-        if (thermalLvl_ == 0 && resStatus->candidate != INVALID_VALUE) {
+        if (thermalLvl_.load(std::memory_order_acquire) == 0 && resStatus->candidate != INVALID_VALUE) {
             resStatus->candidate = Min(resStatus->candidate, resStatus->candidatesValue[ACTION_TYPE_PERFLVL]);
         } else {
             resStatus->candidate = resStatus->candidatesValue[ACTION_TYPE_PERFLVL];
@@ -589,7 +638,7 @@ bool SocPerfThreadWrap::ArbitratePairResInPerfLvl(int32_t resId)
     }
     // only limit max when PerfRequestLvl has max value
     bool limit = false;
-    if (thermalLvl_ != 0 &&
+    if (thermalLvl_.load(std::memory_order_acquire) != 0 &&
         !socPerfConfig_.IsGovResId(resId) &&
         ((socPerfConfig_.resourceNodeInfo_[resId] != nullptr && socPerfConfig_.resourceNodeInfo_[resId]->isMaxValue) ||
         (pairResId != INVALID_VALUE && socPerfConfig_.resourceNodeInfo_[pairResId] != nullptr &&

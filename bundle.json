@@ -71,6 +71,12 @@
         "//foundation/resourceschedule/soc_perf:test_soc_perf_all",
         "//foundation/resourceschedule/soc_perf/test/fuzztest:fuzztest",
         "//foundation/resourceschedule/soc_perf/test/fuzztest/lxjRUC_fuzzer:fuzztest",
+        "//foundation/resourceschedule/soc_perf/test/fuzztest/socperfconfig_resource_fuzzer:fuzztest",
+        "//foundation/resourceschedule/soc_perf/test/fuzztest/socperfthreadwrap_arbitrate_fuzzer:fuzztest",
+        "//foundation/resourceschedule/soc_perf/test/fuzztest/socperfconfig_boost_fuzzer:fuzztest",
+        "//foundation/resourceschedule/soc_perf/test/fuzztest/socperfcore_request_fuzzer:fuzztest",
+        "//foundation/resourceschedule/soc_perf/test/fuzztest/socperfthreadwrap_control_fuzzer:fuzztest",
+        "//foundation/resourceschedule/soc_perf/test/fuzztest/socperfcore_limit_fuzzer:fuzztest",
         "//foundation/resourceschedule/soc_perf/test/fuzztest/socperf_config_fuzzer:fuzztest",
         "//foundation/resourceschedule/soc_perf/test/fuzztest/socperf_integration_fuzzer:fuzztest",
         "//foundation/resourceschedule/soc_perf/test/fuzztest/socperf_lrucache_fuzzer:fuzztest"
