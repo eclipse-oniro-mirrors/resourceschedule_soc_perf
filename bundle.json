@@ -76,7 +76,10 @@
         "//foundation/resourceschedule/soc_perf/test/fuzztest/socperfconfig_boost_fuzzer:fuzztest",
         "//foundation/resourceschedule/soc_perf/test/fuzztest/socperfcore_request_fuzzer:fuzztest",
         "//foundation/resourceschedule/soc_perf/test/fuzztest/socperfthreadwrap_control_fuzzer:fuzztest",
-        "//foundation/resourceschedule/soc_perf/test/fuzztest/socperfcore_limit_fuzzer:fuzztest"
+        "//foundation/resourceschedule/soc_perf/test/fuzztest/socperfcore_limit_fuzzer:fuzztest",
+        "//foundation/resourceschedule/soc_perf/test/fuzztest/socperf_config_fuzzer:fuzztest",
+        "//foundation/resourceschedule/soc_perf/test/fuzztest/socperf_integration_fuzzer:fuzztest",
+        "//foundation/resourceschedule/soc_perf/test/fuzztest/socperf_lrucache_fuzzer:fuzztest"
       ]
     }
   }

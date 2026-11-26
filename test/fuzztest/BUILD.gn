@@ -33,6 +33,9 @@ group("fuzztest") {
     "socperfcore_request_fuzzer:fuzztest",
     "socperfthreadwrap_control_fuzzer:fuzztest",
     "socperfthreadwrap_arbitrate_fuzzer:fuzztest",
-    "soc_fuzzer:fuzztest"
+    "soc_fuzzer:fuzztest",
+    "socperf_config_fuzzer:fuzztest",
+    "socperf_integration_fuzzer:fuzztest",
+    "socperf_lrucache_fuzzer:fuzztest"
   ]
 }
